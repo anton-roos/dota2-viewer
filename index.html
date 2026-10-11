@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dota Model Archaeology</title>
+<style>
+  :root {
+    --bg: #0f1216; --panel: #161b21; --line: #262e37; --text: #d7dde3; --muted: #8592a0;
+    --accent: #c23c2a; --accent2: #e0a43a; --chip: #1e252d;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #app { display: grid; grid-template-columns: 300px 1fr; height: 100%; }
+  aside { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  aside header { padding: 14px 14px 10px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 15px; margin: 0 0 2px; letter-spacing: .02em; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 12px; }
+  .controls { padding: 10px 14px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
+  label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  select, input[type=search] { width: 100%; background: var(--chip); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 7px 8px; font: inherit; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chips button { background: var(--chip); color: var(--muted); border: 1px solid var(--line); border-radius: 999px;
+    padding: 3px 9px; font: inherit; font-size: 12px; cursor: pointer; }
+  .chips button.on { color: var(--text); border-color: var(--accent); }
+  #list { overflow: auto; flex: 1; min-height: 0; }
+  #list div { padding: 5px 14px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--muted); }
+  #list div:hover { background: var(--chip); color: var(--text); }
+  #list div.sel { background: #2a1714; color: var(--text); box-shadow: inset 3px 0 var(--accent); }
+  #list .tag { float: right; font-size: 10px; color: var(--accent2); margin-left: 6px; }
+  #count { padding: 6px 14px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--line); }
+  main { display: grid; grid-template-rows: auto 1fr; min-width: 0; min-height: 0; }
+  .toolbar { display: flex; gap: 14px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line);
+    background: var(--panel); flex-wrap: wrap; }
+  .toolbar label { display: flex; gap: 6px; align-items: center; text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--text); }
+  #views { display: grid; grid-template-columns: repeat(var(--n, 2), 1fr); min-height: 0; }
+  .view { position: relative; border-right: 1px solid var(--line); min-width: 0; min-height: 0; }
+  .view:last-child { border-right: 0; }
+  .view canvas { display: block; width: 100%; height: 100%; }
+  .view .head { position: absolute; left: 10px; top: 10px; right: 10px; display: flex; gap: 8px; align-items: center; pointer-events: none; }
+  .view .head select { width: auto; pointer-events: auto; background: rgba(22,27,33,.9); }
+  .view .info { position: absolute; left: 10px; bottom: 10px; right: 10px; background: rgba(15,18,22,.82);
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; max-height: 45%; overflow: auto; }
+  .view .info b { color: var(--accent2); font-weight: 600; }
+  .view .info .k { color: var(--muted); }
+  .view .info code { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--text); }
+  .view .head select.seq { max-width: 55%; }
+  .sep { width: 1px; height: 18px; background: var(--line); }
+  .btn { background: var(--chip); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px;
+    font: inherit; font-size: 12px; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .view .timeline { position: absolute; left: 10px; right: 10px; top: 46px; height: 14px; cursor: ew-resize;
+    background: rgba(22,27,33,.85); border: 1px solid var(--line); border-radius: 4px; }
+  .view .timeline .head2 { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--accent); margin-left: -1px; }
+  .view .timeline i { position: absolute; top: 2px; bottom: 2px; width: 3px; margin-left: -1px; background: var(--accent2); border-radius: 1px; }
+  .view .timeline i.snd { background: #5fb8ff; cursor: pointer; width: 4px; }
+  .view .timeline i.hit { animation: hit .5s ease-out; }
+  @keyframes hit { from { transform: scaleY(2.2); box-shadow: 0 0 8px #5fb8ff; } to { transform: none; box-shadow: none; } }
+  .view .head .mute { pointer-events: auto; padding: 4px 8px; }
+  .view .blendctl { position: absolute; left: 10px; top: 66px; display: flex; gap: 8px; align-items: center;
+    background: rgba(15,18,22,.85); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font-size: 12px; }
+  .view .blendctl .bn { color: var(--accent2); }
+  .view .blendctl .bv { color: var(--muted); font-family: ui-monospace, Consolas, monospace; min-width: 36px; }
+  .view .blendctl input { width: 140px; }
+  .view .blendctl:not([hidden]) ~ .toasts, .view .toasts { top: 96px !important; }
+  .view .wear { position: absolute; right: 10px; top: 68px; width: 250px; max-height: 45%; overflow: auto;
+    background: rgba(15,18,22,.85); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+  .view .wear .wt { font-weight: 600; margin-bottom: 4px; }
+  .view .wear .wt .k { color: var(--muted); font-weight: 400; }
+  .view .wear label { display: flex; gap: 6px; align-items: center; padding: 2px 0; cursor: pointer; text-transform: none;
+    letter-spacing: 0; font-size: 12px; color: var(--text); }
+  .view .wear .slot { color: var(--accent2); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; min-width: 62px; }
+  .view .wear .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .view .wear label.missing { opacity: .45; text-decoration: line-through; }
+  .view .wear label.builtin .nm::after { content: ' · in body'; color: var(--muted); }
+  .view .wear select { margin-top: 6px; font-size: 12px; padding: 4px 6px; }
+  .view .toasts { position: absolute; left: 10px; top: 68px; justify-items: start !important; display: grid; gap: 4px; justify-items: end; pointer-events: none; }
+  .view .toasts div { background: rgba(15,18,22,.88); border: 1px solid #2c4a63; color: #bfe3ff; border-radius: 6px;
+    padding: 3px 8px; font: 11px ui-monospace, Consolas, monospace; transition: opacity 1s; max-width: 420px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .view .toasts div.warn { border-color: #63452c; color: #ffd2a8; }
+  .view .toasts div.fade { opacity: 0; }
+  .view .msg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); pointer-events: none; text-align: center; padding: 20px; }
+  @media (max-width: 800px) {
+    #app { grid-template-columns: 1fr; grid-template-rows: 40% 60%; }
+    #views { grid-template-columns: 1fr; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app">
+  <aside>
+    <header>
+      <h1>Dota <span>Model</span> Archaeology</h1>
+      <div class="sub">Source 1 builds, January 2011 → September 2015</div>
+    </header>
+    <div class="controls">
+      <div>
+        <label for="listBuild">List models from</label>
+        <select id="listBuild"></select>
+      </div>
+      <input id="q" type="search" placeholder="Filter… e.g. axe, roshan, tree">
+      <div class="chips" id="chips">
+        <button data-p="models/heroes/" class="on">heroes</button>
+        <button data-p="models/creeps/">creeps</button>
+        <button data-p="models/props_">props</button>
+        <button data-p="">all</button>
+      </div>
+    </div>
+    <div id="list"></div>
+    <div id="count"></div>
+  </aside>
+  <main>
+    <div class="toolbar">
+      <label><input type="checkbox" id="optTex" checked> textures</label>
+      <label><input type="checkbox" id="optWire"> wireframe</label>
+      <label><input type="checkbox" id="optSync" checked> sync cameras</label>
+      <label><input type="checkbox" id="optSpin"> turntable</label>
+      <span class="sep"></span>
+      <button id="optPlay" class="btn" title="Play / pause (space)">⏸ pause</button>
+      <label>speed <select id="optSpeed" style="width:auto"><option value="0.1">0.1×</option><option value="0.25">0.25×</option>
+        <option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+      <label><input type="checkbox" id="optSyncSeq" checked> sync animations</label>
+      <label><input type="checkbox" id="optLoopAll" checked> repeat one-shots</label>
+      <span class="sep"></span>
+      <button id="optSound" class="btn" title="Browsers only allow audio after a click">🔇 sound off</button>
+      <input id="optVol" type="range" min="0" max="1" step="0.05" value="0.7" title="Volume" style="width:80px">
+      <label>views <select id="optViews" style="width:auto"><option>1</option><option selected>2</option><option>3</option></select></label>
+    </div>
+    <div id="views"></div>
+  </main>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { buildModel, materialPaths, parseVMT, parseVTF, decodeSequence, texturePath } from './source.js?v=7';
+
+const $ = (s) => document.querySelector(s);
+const api = (p) => fetch(p).then((r) => (r.ok ? r : Promise.reject(new Error(r.status + ' ' + p))));
+const file = (build, path) => api(`/api/file?build=${build}&path=${encodeURIComponent(path)}`).then((r) => r.arrayBuffer());
+const tryFile = (build, path) => file(build, path).catch(() => null);
+
+let builds = [];
+const lists = {};      // build -> [model paths]
+let current = null;    // selected model path
+
+// ------------------------------------------------------------ viewports
+class View {
+  constructor(idx, buildKey) {
+    this.el = document.createElement('div');
+    this.el.className = 'view';
+    this.el.innerHTML = `<div class="head"><select class="build"></select><select class="seq" hidden></select>`
+      + `<button class="btn mute" title="Mute this view">🔊</button></div>`
+      + `<div class="msg">Pick a model on the left</div><div class="info" hidden></div><div class="timeline" hidden><div></div></div>`
+      + `<div class="toasts"></div>`
+      + `<div class="blendctl" hidden><span class="bn"></span><input type="range" min="0" max="1" step="0.01"><span class="bv"></span></div>`;
+    this.blendCtl = this.el.querySelector('.blendctl');
+    this.muted = false;
+    this.muteBtn = this.el.querySelector('.mute');
+    this.muteBtn.onclick = () => {
+      this.muted = !this.muted;
+      this.muteBtn.textContent = this.muted ? '🔇' : '🔊';
+      if (this.gain) this.gain.gain.value = this.muted ? 0 : 1;
+    };
+    this.toasts = this.el.querySelector('.toasts');
+    this.sel = this.el.querySelector('select.build');
+    for (const b of builds) this.sel.append(new Option(b.label, b.key, false, b.key === buildKey));
+    this.sel.onchange = () => current && this.load(current);
+    this.seqSel = this.el.querySelector('select.seq');
+    this.seqSel.onchange = () => { this.playSequence(+this.seqSel.value); syncSequence(this); };
+    this.timeline = this.el.querySelector('.timeline');
+    this.timeline.onpointerdown = (e) => this.scrub(e);
+    this.msg = this.el.querySelector('.msg');
+    this.info = this.el.querySelector('.info');
+
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.el.prepend(this.renderer.domElement);
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x0f1216);
+    this.camera = new THREE.PerspectiveCamera(35, 1, 1, 20000);
+    this.camera.position.set(220, 140, 220);
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableDamping = true;
+    this.controls.addEventListener('change', () => syncFrom(this));
+
+    this.scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x302822, 1.6));
+    const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(200, 400, 250); this.scene.add(key);
+    const rim = new THREE.DirectionalLight(0x8fb4ff, 1.0); rim.position.set(-300, 200, -250); this.scene.add(rim);
+    const grid = new THREE.GridHelper(400, 20, 0x2c343d, 0x1c2229); this.scene.add(grid);
+    this.spin = new THREE.Group(); // turntable, around world Y
+    this.root = new THREE.Group(); // per-model up-axis correction
+    this.spin.add(this.root);
+    this.scene.add(this.spin);
+    this.texCache = new Map();
+  }
+
+  get build() { return this.sel.value; }
+
+  get gain() {
+    if (!audio.ctx) return null;
+    if (!this._gain) {
+      this._gain = audio.ctx.createGain();
+      this._gain.gain.value = this.muted ? 0 : 1;
+      this._gain.connect(audio.master);
+    }
+    return this._gain;
+  }
+
+  toast(text, warn) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    if (warn) d.className = 'warn';
+    this.toasts.prepend(d);
+    while (this.toasts.children.length > 4) this.toasts.lastChild.remove();
+    setTimeout(() => d.classList.add('fade'), 1600);
+    setTimeout(() => d.remove(), 2600);
+  }
+
+  fireEvents(prev, cur) {
+    if (!audio.enabled || this.muted || !this.anim) return;
+    for (const e of this.anim.events) {
+      if (!e.sound) continue;
+      const hit = cur >= prev ? e.cycle > prev && e.cycle <= cur : e.cycle > prev || e.cycle <= cur;
+      if (hit) {
+        audio.play(this.build, e.sound, this);
+        const tick = this.timeline.querySelector(`i[data-i="${this.anim.events.indexOf(e)}"]`);
+        if (tick) { tick.classList.remove('hit'); void tick.offsetWidth; tick.classList.add('hit'); }
+      }
+    }
+  }
+
+  resize() {
+    const r = this.el.getBoundingClientRect();
+    this.renderer.setSize(r.width, r.height, false);
+    this.camera.aspect = r.width / Math.max(1, r.height);
+    this.camera.updateProjectionMatrix();
+  }
+
+  clear() {
+    this.model = null; this.skeleton = null; this.anim = null;
+    if (this.blendCtl) this.blendCtl.hidden = true;
+    this.wearPanel?.remove(); this.wearPanel = null; this.wear = new Map();
+    this.seqSel.hidden = true; this.timeline.hidden = true;
+    for (const c of [...this.root.children]) {
+      this.root.remove(c);
+      c.traverse((o) => { o.geometry?.dispose(); if (o.material) [].concat(o.material).forEach((m) => m.dispose()); });
+    }
+  }
+
+  async texture(path) {
+    const key = this.build + '|' + path;
+    if (this.texCache.has(key)) return this.texCache.get(key);
+    const p = (async () => {
+      const buf = await tryFile(this.build, path);
+      if (!buf) return null;
+      const t = parseVTF(buf);
+      const tex = new THREE.DataTexture(t.rgba, t.width, t.height, THREE.RGBAFormat);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.generateMipmaps = true;
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.anisotropy = 4;
+      tex.needsUpdate = true;
+      tex.userData = t;
+      return tex;
+    })();
+    this.texCache.set(key, p);
+    return p;
+  }
+
+  async material(mdl, slot) {
+    for (const vmtPath of materialPaths(mdl, slot)) {
+      const buf = await tryFile(this.build, vmtPath);
+      if (!buf) continue;
+      const vmt = parseVMT(new TextDecoder().decode(buf));
+      const tp = texturePath(vmt.params['$basetexture']);
+      const tex = tp ? await this.texture(tp) : null;
+      const translucent = '$translucent' in vmt.params || '$alphatest' in vmt.params;
+      return { vmtPath, vmt, tex, translucent, alphaTest: '$alphatest' in vmt.params };
+    }
+    return { vmtPath: materialPaths(mdl, slot)[0], vmt: null, tex: null };
+  }
+
+  async load(path) {
+    const build = this.build;
+    const token = (this.token = Symbol());
+    this.msg.textContent = 'Loading…';
+    this.msg.hidden = false;
+    this.info.hidden = true;
+    const base = path.replace(/\.mdl$/, '');
+    const [mdlB, vvdB, vtxB] = await Promise.all([
+      tryFile(build, path), tryFile(build, base + '.vvd'),
+      tryFile(build, base + '.dx90.vtx').then((b) => b || tryFile(build, base + '.vtx')),
+    ]);
+    if (token !== this.token) return;
+    this.clear();
+    if (!mdlB) { this.msg.textContent = `Not in this build:\n${path}`; return; }
+    if (!vvdB || !vtxB) { this.msg.textContent = 'MDL found but its vertex files are missing'; return; }
+
+    let model;
+    try { model = buildModel(mdlB, vvdB, vtxB); }
+    catch (e) { this.msg.textContent = 'Could not parse: ' + e.message; return; }
+    const unit = (await audio.table('units', build))[path] || null;
+    if (token !== this.token) return;
+    this.unit = unit;
+    audio.table('scripts', build); // warm the soundscript table
+
+    const mats = await Promise.all(model.meshes.map((m) => this.material(model.mdl, m.material)));
+    if (token !== this.token) return;
+
+    // Skeleton: bones keep MDL order so VVD bone indices map straight onto it. poseToBone is the
+    // inverse bind matrix; with an identity bindMatrix the skinned result is bone space -> model space.
+    const bones = model.mdl.bones.map((b) => { const o = new THREE.Bone(); o.name = b.name; return o; });
+    model.mdl.bones.forEach((b, i) => (b.parent >= 0 ? bones[b.parent] : this.root).add(bones[i]));
+    const inverses = model.mdl.bones.map((b) => {
+      const m = b.poseToBone;
+      return new THREE.Matrix4().set(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], 0, 0, 0, 1);
+    });
+    this.bones = bones;
+    this.skeleton = new THREE.Skeleton(bones, inverses);
+    this.model = model;
+    this.restPose();
+
+    const bbox = new THREE.Box3();
+    const body = new THREE.Group();
+    body.name = 'body';
+    this.root.add(body);
+    this.addMeshes(model, mats, this.skeleton, body, bbox);
+    applyOptions(this);
+
+    // Dota's compiled vertices are usually Y-up, though Source itself is Z-up. The MDL hull is always
+    // in Source space, so compare all three extents against it under both orientations:
+    //   Y-up: vertex (x, y, z) ~ hull (y, z, x)      Z-up: vertex (x, y, z) ~ hull (x, y, z)
+    const size = bbox.getSize(new THREE.Vector3());
+    const h = [0, 1, 2].map((k) => model.mdl.hullMax[k] - model.mdl.hullMin[k]);
+    const errY = Math.abs(size.x - h[1]) + Math.abs(size.y - h[2]) + Math.abs(size.z - h[0]);
+    const errZ = Math.abs(size.x - h[0]) + Math.abs(size.y - h[1]) + Math.abs(size.z - h[2]);
+    const zUp = h[2] > 1 && errZ < errY;
+    this.restUp = zUp ? 'Z' : 'Y';
+    this.upAxis = this.restUp;
+    this.root.rotation.set(zUp ? -Math.PI / 2 : 0, 0, 0);
+    if (zUp) bbox.set(new THREE.Vector3(bbox.min.x, bbox.min.z, -bbox.max.y), new THREE.Vector3(bbox.max.x, bbox.max.z, -bbox.min.y));
+    // Animated poses always come out Z-up (the root bone carries the rotation), so frame on the hull
+    const hullBox = new THREE.Box3(
+      new THREE.Vector3(model.mdl.hullMin[0], model.mdl.hullMin[2], -model.mdl.hullMax[1]),
+      new THREE.Vector3(model.mdl.hullMax[0], model.mdl.hullMax[2], -model.mdl.hullMin[1]));
+    if (h[2] > 1) bbox.copy(hullBox);
+
+    this.msg.hidden = true;
+    this.fitSize = Math.max(size.x, size.y, size.z) || 100;
+    if (!this.framed || !$('#optSync').checked) this.frame(bbox);
+
+    const tris = model.meshes.reduce((s, m) => s + m.idx.length / 3, 0);
+    const texRows = mats.map((m) => {
+      const t = m.tex?.userData;
+      return `<div><code>${m.vmtPath}</code><br><span class="k">${m.vmt ? m.vmt.shader : 'material missing'}</span>`
+        + (t ? ` · ${t.width}×${t.height} ${t.format}` : m.vmt ? ' · texture missing' : '') + '</div>';
+    }).join('');
+    const seq = model.mdl.sequences;
+    this.info.innerHTML = `
+      <div><b>${builds.find((b) => b.key === build)?.label}</b></div>
+      <div><span class="k">vertices</span> ${model.vertexCount.toLocaleString()} · <span class="k">triangles</span> ${tris.toLocaleString()}
+        · <span class="k">bones</span> ${model.mdl.numBones} · <span class="k">MDL</span> v${model.mdl.version} · <span class="k">up</span> <span class="up">${this.upAxis}</span>
+        · <span class="k">size</span> ${size.x.toFixed(0)}×${size.y.toFixed(0)}×${size.z.toFixed(0)}</div>
+      <div><span class="k">animations (${seq.length})</span> ${seq.slice(0, 18).join(', ')}${seq.length > 18 ? '…' : ''}</div>
+      <div><span class="k">unit</span> ${this.unit ? `${this.unit.unit} · <span class="k">SoundSet</span> ${this.unit.soundSet || '—'}` : 'no npc entry uses this model'}</div>
+      ${texRows}`;
+    this.info.hidden = false;
+
+    // sequences
+    this.seqSel.innerHTML = '';
+    this.seqSel.append(new Option('rest pose (no animation)', -1));
+    model.mdl.seqs.forEach((s, i) => {
+      const a = model.mdl.anims[s.anim];
+      const tags = [`${a?.numFrames ?? 0}f`];
+      if (s.looping) tags.push('loop');
+      if (s.blend[0] > 1) tags.push(`${s.blend[0]}-way blend`);
+      if (s.flags & 0x4) tags.push('layer');
+      if (s.flags & 0x400) tags.push('hidden');
+      const label = `${s.name}${s.activity ? ' · ' + s.activity.replace(/^ACT_(DOTA_)?/, '') : ''} (${tags.join(', ')})`;
+      this.seqSel.append(new Option(label, i));
+    });
+    this.seqSel.hidden = false;
+    const want = preferredSequence;
+    let pick = model.mdl.seqs.findIndex((s) => s.name === want);
+    if (pick < 0) pick = model.mdl.seqs.findIndex((s) => /(^|_)idle$/i.test(s.name) || s.activity === 'ACT_DOTA_IDLE' || s.activity === 'ACT_IDLE');
+    if (pick < 0) pick = model.mdl.seqs.findIndex((s) => s.name !== 'BindPose');
+    this.seqSel.value = pick;
+    this.playSequence(pick);
+    this.loadWearables(token);
+  }
+
+  addMeshes(model, mats, skeleton, group, bbox) {
+    model.meshes.forEach((m, i) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
+      g.setAttribute('normal', new THREE.BufferAttribute(m.nrm, 3));
+      g.setAttribute('uv', new THREE.BufferAttribute(m.uv, 2));
+      g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(m.bone, 4));
+      g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(m.weight, 4));
+      g.setIndex(new THREE.BufferAttribute(m.idx, 1));
+      g.computeBoundingBox();
+      const info = mats[i];
+      const mat = new THREE.MeshStandardMaterial({
+        color: info.tex ? 0xffffff : 0x9a8f86, roughness: 0.75, metalness: 0.05, side: THREE.DoubleSide,
+      });
+      mat.userData.tex = info.tex;
+      if (info.alphaTest) mat.alphaTest = 0.5;
+      else if (info.translucent) mat.transparent = true;
+      const mesh = new THREE.SkinnedMesh(g, mat);
+      mesh.bind(skeleton, new THREE.Matrix4()); // attached mode cancels the mesh's own transform
+      mesh.frustumCulled = false; // animated poses leave the rest-pose bounds
+      group.add(mesh);
+      bbox?.union(g.boundingBox);
+    });
+  }
+
+  // ---------------------------------------------------------- wearables
+  // Cosmetic parts are separate models rigged to a copy of the hero skeleton. The engine "bone merges"
+  // them: each wearable bone follows the hero bone with the same name. Here that means a Skeleton made
+  // of the hero's own Bone objects, paired with the wearable's own inverse bind matrices.
+  async loadWearables(token) {
+    this.wear = new Map();
+    this.wearPanel?.remove();
+    const hero = this.unit?.unit;
+    if (!hero || !hero.startsWith('npc_dota_hero_')) return;
+    const items = await api(`/api/wearables?build=${this.build}&hero=${hero}`).then((r) => r.json()).catch(() => []);
+    if (token !== this.token || !items.length) return;
+
+    const panel = document.createElement('div');
+    panel.className = 'wear';
+    panel.innerHTML = `<div class="wt">Wearables <span class="k">· ${items.filter((i) => i.default).length} default`
+      + ` of ${items.length}</span></div><div class="wl"></div>`;
+    const list = panel.querySelector('.wl');
+    const others = items.filter((i) => !i.default);
+    if (others.length) {
+      const sel = document.createElement('select');
+      sel.append(new Option(`+ try another item (${others.length})…`, ''));
+      const bySlot = {};
+      for (const i of others) (bySlot[i.slot] ||= []).push(i);
+      for (const [slot, list2] of Object.entries(bySlot)) {
+        const og = document.createElement('optgroup');
+        og.label = slot;
+        for (const i of list2) og.append(new Option(i.name + (i.rarity ? ` (${i.rarity})` : ''), i.id));
+        sel.append(og);
+      }
+      sel.onchange = () => {
+        const item = others.find((i) => i.id === sel.value);
+        sel.value = '';
+        if (!item || this.wear.has(item.id)) return;
+        // swap like the in-game loadout: hide whatever currently fills this slot
+        for (const [, w] of this.wear) if (w.item.slot === item.slot && w.box.checked) { w.box.checked = false; w.box.onchange(); }
+        this.addWearableRow(list, item, true);
+      };
+      panel.append(sel);
+    }
+    this.el.append(panel);
+    this.wearPanel = panel;
+    for (const item of items.filter((i) => i.default)) this.addWearableRow(list, item, true);
+  }
+
+  addWearableRow(list, item, on) {
+    const row = document.createElement('label');
+    row.innerHTML = `<input type="checkbox"><span class="slot">${item.slot.replace(/_/g, ' ')}</span><span class="nm"></span>`;
+    row.querySelector('.nm').textContent = item.name;
+    row.title = item.model;
+    const box = row.querySelector('input');
+    box.checked = on;
+    list.append(row);
+    const entry = { item, box, row, group: null, loading: null };
+    this.wear.set(item.id, entry);
+    box.onchange = async () => {
+      if (box.checked && !entry.group) await this.attachWearable(entry);
+      if (entry.group) entry.group.visible = box.checked;
+    };
+    if (on) box.onchange();
+  }
+
+  async attachWearable(entry) {
+    if (entry.loading) return entry.loading;
+    const token = this.token, build = this.build, path = entry.item.model;
+    entry.loading = (async () => {
+      const base = path.replace(/\.mdl$/, '');
+      const [a, v, x] = await Promise.all([
+        tryFile(build, path), tryFile(build, base + '.vvd'),
+        tryFile(build, base + '.dx90.vtx').then((b) => b || tryFile(build, base + '.vtx')),
+      ]);
+      if (token !== this.token) return;
+      if (!a || !v || !x) { entry.row.classList.add('missing'); entry.row.title = path + ' — not in this build'; entry.box.checked = false; return; }
+      let wm;
+      try { wm = buildModel(a, v, x); } catch (e) { entry.row.classList.add('missing'); entry.row.title = 'parse error: ' + e.message; return; }
+
+      // A default part may already be baked into the body (July 2011 Axe still carries his axe)
+      const bodyTex = new Set(this.model.mdl.textures.map((t) => t.split('/').pop()));
+      const builtIn = wm.mdl.textures.length && wm.mdl.textures.every((t) => bodyTex.has(t.split('/').pop()));
+
+      const byName = new Map(this.bones.map((b) => [b.name.toLowerCase(), b]));
+      const bones = [];
+      wm.mdl.bones.forEach((b, i) => {
+        let bone = byName.get(b.name.toLowerCase());
+        if (!bone) { // a bone the hero lacks: hang it under its merged parent in its rest pose
+          bone = new THREE.Bone();
+          bone.name = b.name;
+          bone.position.fromArray(b.pos);
+          bone.quaternion.fromArray(b.quat);
+          (b.parent >= 0 ? bones[b.parent] : this.root).add(bone);
+        }
+        bones[i] = bone;
+      });
+      const inverses = wm.mdl.bones.map((b) => {
+        const m = b.poseToBone;
+        return new THREE.Matrix4().set(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], 0, 0, 0, 1);
+      });
+      const mats = await Promise.all(wm.meshes.map((m) => this.material(wm.mdl, m.material)));
+      if (token !== this.token) return;
+      const group = new THREE.Group();
+      group.name = 'wearable:' + entry.item.id;
+      this.addMeshes(wm, mats, new THREE.Skeleton(bones, inverses), group, null);
+      this.root.add(group);
+      entry.group = group;
+      applyOptions(this);
+      if (builtIn) {
+        entry.row.classList.add('builtin');
+        entry.row.title = 'Already part of the body model in this build';
+        entry.box.checked = false;
+      }
+      group.visible = entry.box.checked;
+    })();
+    return entry.loading;
+  }
+
+  restPose() {
+    this.model.mdl.bones.forEach((b, i) => {
+      this.bones[i].position.fromArray(b.pos);
+      this.bones[i].quaternion.fromArray(b.quat);
+    });
+  }
+
+  playSequence(i) {
+    if (!this.model) return;
+    if (i < 0 || !this.model.mdl.seqs[i]) {
+      this.anim = null;
+      this.restPose();
+      this.root.rotation.set(this.restUp === 'Z' ? -Math.PI / 2 : 0, 0, 0);
+      this.upAxis = this.restUp;
+      this.timeline.hidden = true;
+      return;
+    }
+    try { this.anim = decodeSequence(this.model.mdl, i); }
+    catch (e) { console.warn('animation decode failed', e); this.anim = null; this.restPose(); return; }
+    this.anim.time = 0;
+    this.anim.baseTime = 0;
+    this.anim.index = i;
+    this.anim.prevCycle = -1e-6; // so events at cycle 0 fire on the first frame
+    const mdl = this.model.mdl, seq = mdl.seqs[i];
+    if (this.anim.delta) {
+      // a delta layer needs something to sit on: use the hero's idle, as the game would
+      const isIdle = (s) => !(s.flags & 0x4) && (/(^|_)idle$/i.test(s.name) || s.activity === 'ACT_DOTA_IDLE' || s.activity === 'ACT_IDLE');
+      const bi = mdl.seqs.findIndex(isIdle);
+      if (bi >= 0) { this.anim.base = decodeSequence(mdl, bi); this.anim.baseName = mdl.seqs[bi].name; }
+    }
+    // blended sequence: slider for its pose parameter
+    if (this.anim.blends.length > 1) {
+      const pp = mdl.poseParams[seq.param];
+      const lo = seq.paramStart, hi = seq.paramEnd;
+      this.blendCtl.hidden = false;
+      this.blendCtl.querySelector('.bn').textContent = (pp?.name || 'blend') + (this.anim.delta ? ` · layered on ${this.anim.baseName || 'rest pose'}` : '');
+      const r = this.blendCtl.querySelector('input');
+      r.value = this.anim.blendPos;
+      const show = () => { this.blendCtl.querySelector('.bv').textContent = (lo + (hi - lo) * +r.value).toFixed(2); };
+      r.oninput = () => { this.anim.blendPos = +r.value; show(); if (!playing) this.applyPose(this.anim.time); };
+      show();
+    } else {
+      this.blendCtl.hidden = !this.anim.delta;
+      if (this.anim.delta) {
+        this.blendCtl.querySelector('.bn').textContent = `delta layer · on ${this.anim.baseName || 'rest pose'}`;
+        this.blendCtl.querySelector('.bv').textContent = '';
+      }
+      this.blendCtl.querySelector('input').hidden = !!this.anim.delta;
+    }
+    if (this.anim.blends.length > 1) this.blendCtl.querySelector('input').hidden = false;
+    for (const e of this.anim.events) e.sound = eventSound(e, this.unit?.soundSet);
+    this.root.rotation.set(-Math.PI / 2, 0, 0); // animated poses are in Source's Z-up space
+    this.upAxis = 'Z';
+    const up = this.info.querySelector('.up');
+    if (up) up.textContent = 'Z (animated)';
+    this.timeline.hidden = false;
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    this.timeline.innerHTML = '<div class="head2"></div>' + this.anim.events.map((e, k) =>
+      `<i data-i="${k}" class="${e.sound ? 'snd' : ''}" style="left:${(e.cycle * 100).toFixed(2)}%" `
+      + `title="${(e.cycle * 100).toFixed(0)}%  ${esc(e.name)}  ${esc(e.sound || e.options)}"></i>`).join('');
+    for (const t of this.timeline.querySelectorAll('i.snd')) {
+      t.onpointerdown = (ev) => { ev.stopPropagation(); unlockAudio().then(() => audio.play(this.build, this.anim.events[+t.dataset.i].sound, this)); };
+    }
+    this.applyPose(0);
+  }
+
+  // Samples a decoded sequence at time t: interpolates between frames and between blend columns.
+  // Returns { pos: Float32Array, quat: Float32Array, cycle }.
+  samplePose(a, t) {
+    const nb = this.bones.length;
+    const pos = new Float32Array(nb * 3), quat = new Float32Array(nb * 4);
+    const n = a.numFrames;
+    const span = Math.max(1, n - 1); // Source cycle: last frame of a loop equals the first
+    const f = a.looping ? (t * a.fps) % span : Math.min(t * a.fps, n - 1);
+    const cycle = n > 1 ? f / (n - 1) : 0;
+    const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
+
+    const sampleColumn = (frames, outP, outQ) => {
+      const m = frames.length;
+      const fc = Math.min(cycle * (m - 1), m - 1);
+      const f0 = Math.floor(fc), f1 = Math.min(f0 + 1, m - 1), k = fc - f0;
+      const A = frames[f0], B = frames[f1];
+      for (let b = 0; b < nb; b++) {
+        for (let c = 0; c < 3; c++) outP[b * 3 + c] = A.pos[b * 3 + c] + (B.pos[b * 3 + c] - A.pos[b * 3 + c]) * k;
+        qa.fromArray(A.quat, b * 4); qb.fromArray(B.quat, b * 4);
+        qa.slerp(qb, k).toArray(outQ, b * 4);
+      }
+    };
+
+    const cols = a.blends.length;
+    if (cols <= 1) {
+      sampleColumn(a.blends[0], pos, quat);
+    } else {
+      const x = a.blendPos * (cols - 1);
+      const c0 = Math.min(Math.floor(x), cols - 2), k = x - c0;
+      const p1 = new Float32Array(nb * 3), q1 = new Float32Array(nb * 4);
+      sampleColumn(a.blends[c0], pos, quat);
+      sampleColumn(a.blends[c0 + 1], p1, q1);
+      for (let b = 0; b < nb; b++) {
+        for (let c = 0; c < 3; c++) pos[b * 3 + c] += (p1[b * 3 + c] - pos[b * 3 + c]) * k;
+        qa.fromArray(quat, b * 4); qb.fromArray(q1, b * 4);
+        qa.slerp(qb, k).toArray(quat, b * 4);
+      }
+    }
+    return { pos, quat, cycle };
+  }
+
+  applyPose(t) {
+    const a = this.anim;
+    const s = this.samplePose(a, t);
+    let pos = s.pos, quat = s.quat;
+    if (a.delta) {
+      // Layer the offsets onto a base pose like Source's SlerpBones: q = delta * base, p = base + delta
+      const base = a.base ? this.samplePose(a.base, a.baseTime ?? t) : {
+        pos: Float32Array.from(this.model.mdl.bones.flatMap((b) => b.pos)),
+        quat: Float32Array.from(this.model.mdl.bones.flatMap((b) => b.quat)),
+      };
+      const qd = new THREE.Quaternion(), qbase = new THREE.Quaternion();
+      for (let b = 0; b < this.bones.length; b++) {
+        for (let c = 0; c < 3; c++) base.pos[b * 3 + c] += pos[b * 3 + c];
+        qd.fromArray(quat, b * 4); qbase.fromArray(base.quat, b * 4);
+        qd.multiply(qbase).toArray(base.quat, b * 4);
+      }
+      pos = base.pos; quat = base.quat;
+    }
+    for (let b = 0; b < this.bones.length; b++) {
+      this.bones[b].position.fromArray(pos, b * 3);
+      this.bones[b].quaternion.fromArray(quat, b * 4);
+    }
+    a.cycle = s.cycle;
+    const head = this.timeline.firstChild;
+    if (head) head.style.left = (a.cycle * 100).toFixed(2) + '%';
+  }
+
+  update(dt) {
+    const a = this.anim;
+    if (!a) return;
+    const len = Math.max(1, a.numFrames - 1) / a.fps;
+    if (playing) {
+      a.time += dt * speed;
+      a.baseTime = (a.baseTime || 0) + dt * speed;
+      if (!a.looping && a.time > len) a.time = $('#optLoopAll').checked ? 0 : len;
+    }
+    this.applyPose(a.looping ? a.time % len : Math.min(a.time, len));
+    if (playing && a.cycle !== a.prevCycle) this.fireEvents(a.prevCycle, a.cycle);
+    a.prevCycle = a.cycle;
+  }
+
+  scrub(e) {
+    if (!this.anim) return;
+    const move = (ev) => {
+      const r = this.timeline.getBoundingClientRect();
+      const c = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
+      this.anim.time = c * Math.max(1, this.anim.numFrames - 1) / this.anim.fps * 0.9999;
+      this.applyPose(this.anim.time);
+      this.anim.prevCycle = this.anim.cycle; // scrubbing does not fire events
+    };
+    move(e);
+    const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+  }
+
+  frame(bbox) {
+    const wc = bbox.getCenter(new THREE.Vector3()); // already in world space
+    const d = this.fitSize * 1.9;
+    this.controls.target.copy(wc);
+    this.camera.position.set(wc.x + d * 0.75, wc.y + d * 0.35, wc.z + d * 0.75);
+    this.controls.update();
+    this.framed = true;
+  }
+}
+
+// ------------------------------------------------------------ sound
+// Soundscripts map names like "Hero_Axe.Attack" to one or more waves plus volume and pitch ranges.
+// Animation events either name a sound (AE_CL_PLAYSOUND) or ask for the unit's attack sound, which
+// comes from the SoundSet of the npc_heroes / npc_units entry that uses this model.
+const audio = {
+  ctx: null, master: null, enabled: false, volume: 0.7,
+  scripts: {}, units: {}, buffers: new Map(),
+  async ensure() {
+    if (!this.ctx) {
+      this.ctx = new AudioContext();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = this.volume;
+      this.master.connect(this.ctx.destination);
+    }
+    if (this.ctx.state === 'suspended') await this.ctx.resume();
+  },
+  table(kind, build) {
+    const store = this[kind];
+    if (!store[build]) store[build] = api(`/api/${kind === 'scripts' ? 'sounds' : 'units'}?build=${build}`).then((r) => r.json()).catch(() => ({}));
+    return store[build];
+  },
+  async buffer(build, wave) {
+    const path = 'sound/' + wave.replace(/^[)(^*#@<>!?&~`+%$}\]]+/, '').split('\\').join('/').toLowerCase();
+    const key = build + '|' + path;
+    if (!this.buffers.has(key)) {
+      this.buffers.set(key, (async () => {
+        const buf = await tryFile(build, path);
+        if (!buf) return null;
+        try { return await this.ctx.decodeAudioData(buf.slice(0)); }
+        catch { return decodePCM(this.ctx, buf); }
+      })());
+    }
+    return { path, buffer: await this.buffers.get(key) };
+  },
+  async play(build, name, view) {
+    if (!this.enabled || !this.ctx) return;
+    const scripts = await this.table('scripts', build);
+    const entry = scripts[name.toLowerCase()];
+    if (!entry) { view?.toast(`♪ ${name} — not in this build's soundscripts`, true); return; }
+    const wave = entry.waves[Math.floor(Math.random() * entry.waves.length)];
+    const { path, buffer } = await this.buffer(build, wave);
+    if (!buffer) { view?.toast(`♪ ${name} — ${path} missing`, true); return; }
+    const range = (s, def) => {
+      const p = String(s ?? def).split(',').map(parseFloat).filter((x) => !isNaN(x));
+      return p.length > 1 ? p[0] + Math.random() * (p[1] - p[0]) : p[0] ?? def;
+    };
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    src.playbackRate.value = range(entry.pitch, 100) / 100;
+    const g = this.ctx.createGain();
+    g.gain.value = Math.min(1, range(entry.volume, 1));
+    src.connect(g).connect(view?.gain || this.master);
+    src.start();
+    view?.toast(`♪ ${name} → ${path.replace(/^sound\//, '')}`);
+  },
+};
+
+// Fallback for WAVs the browser refuses: parse RIFF ourselves (8/16-bit PCM).
+function decodePCM(ctx, buf) {
+  const dv = new DataView(buf);
+  if (dv.getUint32(0, false) !== 0x52494646) return null; // 'RIFF'
+  let o = 12, fmt = null, data = null;
+  while (o + 8 <= buf.byteLength) {
+    const id = dv.getUint32(o, false), size = dv.getUint32(o + 4, true);
+    if (id === 0x666d7420) fmt = { code: dv.getUint16(o + 8, true), ch: dv.getUint16(o + 10, true), rate: dv.getUint32(o + 12, true), bits: dv.getUint16(o + 22, true) };
+    if (id === 0x64617461) data = { off: o + 8, size: Math.min(size, buf.byteLength - o - 8) };
+    o += 8 + size + (size & 1);
+  }
+  if (!fmt || !data || fmt.code !== 1) return null;
+  const bps = fmt.bits / 8, frames = Math.floor(data.size / (bps * fmt.ch));
+  const out = ctx.createBuffer(fmt.ch, frames, fmt.rate);
+  for (let c = 0; c < fmt.ch; c++) {
+    const ch = out.getChannelData(c);
+    for (let i = 0; i < frames; i++) {
+      const p = data.off + (i * fmt.ch + c) * bps;
+      ch[i] = bps === 2 ? dv.getInt16(p, true) / 32768 : (dv.getUint8(p) - 128) / 128;
+    }
+  }
+  return out;
+}
+
+// Which sound an animation event plays, or null for non-sound events.
+function eventSound(e, soundSet) {
+  const opt = (e.options || '').trim().replace(/^"|"$/g, '');
+  if (e.name === 'AE_CL_PLAYSOUND' || e.event === 5004) return opt || null;
+  if (/^AE_DOTA_PLAY_SOUND_ATTACK/.test(e.name)) {
+    if (opt && /\./.test(opt)) return opt;
+    return soundSet ? soundSet + '.Attack' : null;
+  }
+  return null;
+}
+
+let views = [];
+let syncing = false;
+let playing = true, speed = 1;
+let preferredSequence = null; // sequence name to show first in every view
+
+// picking a sequence in one view picks the same-named one in the others, when it exists
+function syncSequence(src) {
+  const s = src.model?.mdl.seqs[+src.seqSel.value];
+  preferredSequence = s ? s.name : null;
+  if (!$('#optSyncSeq').checked || !s) return;
+  for (const v of views) {
+    if (v === src || !v.model) continue;
+    const i = v.model.mdl.seqs.findIndex((x) => x.name === s.name);
+    if (i >= 0) { v.seqSel.value = i; v.playSequence(i); }
+  }
+  for (const v of views) if (v.anim) v.anim.time = 0;
+}
+function syncFrom(src) {
+  if (syncing || !$('#optSync').checked) return;
+  syncing = true;
+  for (const v of views) if (v !== src) {
+    v.camera.position.copy(src.camera.position);
+    v.controls.target.copy(src.controls.target);
+    v.controls.update();
+  }
+  syncing = false;
+}
+
+function applyOptions(v) {
+  const tex = $('#optTex').checked, wire = $('#optWire').checked;
+  v.root.traverse((o) => {
+    if (!o.material) return;
+    o.material.map = tex ? o.material.userData.tex || null : null;
+    o.material.color.set(o.material.map ? 0xffffff : 0x9a8f86);
+    o.material.wireframe = wire;
+    o.material.needsUpdate = true;
+  });
+}
+
+function layout() {
+  const n = +$('#optViews').value;
+  const defaults = ['jan2011', 'jul2011', 'dota684'];
+  while (views.length < n) {
+    const v = new View(views.length, defaults[views.length]);
+    views.push(v);
+    $('#views').append(v.el);
+    if (current) v.load(current);
+  }
+  while (views.length > n) {
+    const v = views.pop();
+    v.clear(); v.renderer.dispose(); v.el.remove();
+  }
+  $('#views').style.setProperty('--n', n);
+  for (const v of views) v.resize();
+}
+
+// ------------------------------------------------------------ model list
+let prefix = 'models/heroes/';
+async function refreshList() {
+  const b = $('#listBuild').value;
+  if (!lists[b]) {
+    $('#count').textContent = 'reading the VPK directory…';
+    lists[b] = await api(`/api/models?build=${b}`).then((r) => r.json());
+  }
+  const q = $('#q').value.trim().toLowerCase();
+  const others = builds.filter((x) => x.key !== b && lists[x.key]).map((x) => [x.key, new Set(lists[x.key])]);
+  const items = lists[b].filter((p) => p.startsWith(prefix) && (!q || p.includes(q)));
+  const host = $('#list');
+  host.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  for (const p of items.slice(0, 3000)) {
+    const d = document.createElement('div');
+    d.textContent = p.replace(/^models\//, '');
+    d.title = p;
+    const only = others.length && others.every(([, s]) => !s.has(p));
+    if (only) { const t = document.createElement('span'); t.className = 'tag'; t.textContent = 'only here'; d.prepend(t); }
+    if (p === current) d.className = 'sel';
+    d.onclick = () => select(p);
+    frag.append(d);
+  }
+  host.append(frag);
+  $('#count').textContent = `${items.length.toLocaleString()} models` + (items.length > 3000 ? ' (showing 3,000)' : '');
+}
+
+function select(p) {
+  current = p;
+  for (const d of document.querySelectorAll('#list div')) d.classList.toggle('sel', d.title === p);
+  for (const v of views) { v.framed = false; v.load(p); }
+  location.hash = encodeURIComponent(p);
+}
+
+// ------------------------------------------------------------ boot
+builds = (await api('/api/builds').then((r) => r.json())).filter((b) => b.available);
+for (const b of builds) $('#listBuild').append(new Option(b.label, b.key, false, b.key === 'jul2011'));
+$('#listBuild').onchange = refreshList;
+$('#q').oninput = refreshList;
+for (const c of document.querySelectorAll('#chips button')) c.onclick = () => {
+  for (const o of document.querySelectorAll('#chips button')) o.classList.remove('on');
+  c.classList.add('on'); prefix = c.dataset.p; refreshList();
+};
+$('#optTex').onchange = $('#optWire').onchange = () => views.forEach(applyOptions);
+$('#optViews').onchange = layout;
+const togglePlay = () => { playing = !playing; $('#optPlay').textContent = playing ? '⏸ pause' : '▶ play'; };
+$('#optPlay').onclick = togglePlay;
+addEventListener('keydown', (e) => { if (e.code === 'Space' && !/input|select/i.test(e.target.tagName)) { e.preventDefault(); togglePlay(); } });
+$('#optSpeed').onchange = () => (speed = +$('#optSpeed').value);
+async function unlockAudio() {
+  await audio.ensure();
+  if (!audio.enabled) {
+    audio.enabled = true;
+    $('#optSound').textContent = '🔊 sound on';
+  }
+}
+$('#optSound').onclick = async () => {
+  if (audio.enabled) { audio.enabled = false; $('#optSound').textContent = '🔇 sound off'; return; }
+  await unlockAudio();
+  for (const v of views) if (v.anim) v.anim.prevCycle = v.anim.cycle;
+};
+$('#optVol').oninput = () => { audio.volume = +$('#optVol').value; if (audio.master) audio.master.gain.value = audio.volume; };
+addEventListener('resize', () => views.forEach((v) => v.resize()));
+
+layout();
+await refreshList();
+// load the other builds' lists in the background so "only here" tags can appear
+Promise.all(builds.map((b) => lists[b.key] || api(`/api/models?build=${b.key}`).then((r) => r.json()).then((l) => (lists[b.key] = l))))
+  .then(refreshList);
+const start = decodeURIComponent(location.hash.slice(1)) || 'models/heroes/axe/axe.mdl';
+select(start);
+
+const clock = new THREE.Clock();
+(function tick() {
+  requestAnimationFrame(tick);
+  const dt = clock.getDelta();
+  for (const v of views) {
+    if ($('#optSpin').checked) v.spin.rotation.y += dt * 0.5;
+    v.update(dt);
+    v.controls.update();
+    v.renderer.render(v.scene, v.camera);
+  }
+})();
+</script>
+</body>
+</html>
