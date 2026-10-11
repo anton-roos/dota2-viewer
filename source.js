@@ -530,6 +530,183 @@ export function parseVTF(buf) {
   return { width, height, format: fmt, version: `7.${minor}`, frames, mips, rgba };
 }
 
+// ---------------------------------------------------------------- BSP (maps, v20-22)
+// Reads what the world view needs: terrain (displacements + visible brush faces) grouped by material,
+// entities, and static props. Coordinates stay in Source space (Z-up, units = inches).
+export function parseBSP(buf) {
+  const dv = new DataView(buf);
+  if (td.decode(new Uint8Array(buf, 0, 4)) !== 'VBSP') throw new Error('not a BSP file');
+  const version = dv.getInt32(4, true);
+  const lump = (i) => ({ ofs: dv.getInt32(8 + i * 16, true), len: dv.getInt32(12 + i * 16, true), ver: dv.getInt32(16 + i * 16, true) });
+  const f32 = (o) => dv.getFloat32(o, true), i32 = (o) => dv.getInt32(o, true);
+
+  // texture names
+  const strData = lump(43), strTable = lump(44);
+  const texNames = [];
+  for (let k = 0; k < strTable.len / 4; k++) texNames.push(cstr(dv, strData.ofs + i32(strTable.ofs + k * 4)));
+  const texdata = [];
+  for (let o = lump(2).ofs, e = o + lump(2).len; o < e; o += 32) {
+    texdata.push({ name: texNames[i32(o + 12)] || '', width: i32(o + 16), height: i32(o + 20) });
+  }
+  const texinfo = [];
+  for (let o = lump(6).ofs, e = o + lump(6).len; o < e; o += 72) {
+    const v = []; for (let k = 0; k < 8; k++) v.push(f32(o + k * 4));
+    texinfo.push({ s: v.slice(0, 4), t: v.slice(4, 8), flags: i32(o + 64), texdata: i32(o + 68) });
+  }
+  const verts = lump(3), edges = lump(12), surfedges = lump(13);
+  const vertex = (k) => [f32(verts.ofs + k * 12), f32(verts.ofs + k * 12 + 4), f32(verts.ofs + k * 12 + 8)];
+  const faceVerts = (first, num) => {
+    const out = [];
+    for (let k = 0; k < num; k++) {
+      const se = i32(surfedges.ofs + (first + k) * 4);
+      const e = edges.ofs + Math.abs(se) * 4;
+      out.push(vertex(dv.getUint16(e + (se >= 0 ? 0 : 2), true)));
+    }
+    return out;
+  };
+
+  // group output geometry by material
+  const groups = new Map();
+  const group = (ti) => {
+    const tdat = texdata[texinfo[ti].texdata];
+    const name = tdat.name.toLowerCase();
+    if (!groups.has(name)) groups.set(name, { material: name, width: tdat.width || 512, height: tdat.height || 512, pos: [], uv: [], alpha: [], idx: [] });
+    return groups.get(name);
+  };
+  const uvOf = (ti, p, w, h) => {
+    const { s, t } = texinfo[ti];
+    return [(p[0] * s[0] + p[1] * s[1] + p[2] * s[2] + s[3]) / w, (p[0] * t[0] + p[1] * t[1] + p[2] * t[2] + t[3]) / h];
+  };
+  const SKIP = 0x0004 | 0x0002 | 0x0080 | 0x0200; // SURF_SKY, SURF_SKY2D, SURF_NODRAW, SURF_TRIGGER
+
+  const faces = lump(7), dispinfo = lump(26), dispverts = lump(33);
+  // ddispinfo_t is 176 bytes in BSP v20/21 but 180 in Dota's v22: derive it from the highest index used
+  let maxDisp = -1;
+  for (let o = faces.ofs, e = o + faces.len; o < e; o += 56) maxDisp = Math.max(maxDisp, dv.getInt16(o + 12, true));
+  const dispSize = maxDisp >= 0 ? Math.floor(dispinfo.len / (maxDisp + 1)) : 176;
+  let dispCount = 0, brushCount = 0;
+  const displacements = [];
+  for (let o = faces.ofs, e = o + faces.len; o < e; o += 56) {
+    const firstEdge = i32(o + 4), numEdges = dv.getInt16(o + 8, true);
+    const ti = dv.getInt16(o + 10, true), di = dv.getInt16(o + 12, true);
+    if (ti < 0 || !texinfo[ti]) continue;
+    const name = (texdata[texinfo[ti].texdata]?.name || '').toLowerCase();
+    if (texinfo[ti].flags & SKIP || name.startsWith('tools/')) continue;
+    const g = group(ti);
+    const corners = faceVerts(firstEdge, numEdges);
+    if (di >= 0 && corners.length === 4) {
+      // displacement: a (2^power+1)² grid over the face, each vertex pushed out along its vector
+      const d = dispinfo.ofs + di * dispSize;
+      const start = [f32(d), f32(d + 4), f32(d + 8)];
+      const vertStart = i32(d + 12), power = i32(d + 20);
+      // minTess doubles as a flags word in this engine branch: 0x80000000 = flags valid,
+      // 0x40000000 = this displacement has LUMP_DISP_MULTIBLEND records
+      const flags = i32(d + 24) >>> 0;
+      const hasMultiblend = (flags & 0x80000000) !== 0 && (flags & 0x40000000) !== 0;
+      let best = 0, bestDist = Infinity;
+      corners.forEach((c, k) => { const dd = (c[0] - start[0]) ** 2 + (c[1] - start[1]) ** 2 + (c[2] - start[2]) ** 2; if (dd < bestDist) { bestDist = dd; best = k; } });
+      const c = [0, 1, 2, 3].map((k) => corners[(best + k) % 4]);
+      const n = (1 << power) + 1, base = g.pos.length / 3;
+      displacements.push({ di, group: g, first: base, count: n * n, hasMultiblend });
+      for (let i = 0; i < n; i++) {
+        const a = i / (n - 1);
+        const left = [0, 1, 2].map((k) => c[0][k] + (c[1][k] - c[0][k]) * a);
+        const right = [0, 1, 2].map((k) => c[3][k] + (c[2][k] - c[3][k]) * a);
+        for (let j = 0; j < n; j++) {
+          const b = j / (n - 1);
+          const p0 = [0, 1, 2].map((k) => left[k] + (right[k] - left[k]) * b);
+          const v = dispverts.ofs + (vertStart + i * n + j) * 20;
+          const dist = f32(v + 12);
+          g.pos.push(p0[0] + f32(v) * dist, p0[1] + f32(v + 4) * dist, p0[2] + f32(v + 8) * dist);
+          g.uv.push(...uvOf(ti, p0, g.width, g.height));
+          g.alpha.push(f32(v + 16) / 255);
+        }
+      }
+      for (let i = 0; i < n - 1; i++) for (let j = 0; j < n - 1; j++) {
+        const q = base + i * n + j;
+        g.idx.push(q, q + 1, q + n, q + 1, q + n + 1, q + n);
+      }
+      dispCount++;
+    } else {
+      const base = g.pos.length / 3;
+      for (const p of corners) { g.pos.push(...p); g.uv.push(...uvOf(ti, p, g.width, g.height)); g.alpha.push(0); }
+      for (let k = 1; k < corners.length - 1; k++) g.idx.push(base, base + k, base + k + 1);
+      brushCount++;
+    }
+  }
+
+  // entities: { "key" "value" } blocks
+  const ent = lump(0);
+  const text = td.decode(new Uint8Array(buf, ent.ofs, ent.len));
+  const entities = [];
+  for (const m of text.matchAll(/\{([^{}]*)\}/g)) {
+    const o = {};
+    for (const kv of m[1].matchAll(/"([^"]*)"\s+"([^"]*)"/g)) if (!(kv[1] in o)) o[kv[1]] = kv[2];
+    entities.push(o);
+  }
+
+  // static props (game lump 'sprp'): model dictionary, leaf list, then fixed-size prop records
+  const props = [];
+  const game = lump(35);
+  const nGame = i32(game.ofs);
+  for (let k = 0; k < nGame; k++) {
+    const g = game.ofs + 4 + k * 16;
+    const id = td.decode(new Uint8Array(buf, g, 4)).split('').reverse().join('');
+    if (id !== 'sprp') continue;
+    const ofs = i32(g + 8), len = i32(g + 12);
+    let p = ofs;
+    const nDict = i32(p); p += 4;
+    const dict = [];
+    for (let j = 0; j < nDict; j++) dict.push(cstr(dv, p + j * 128).toLowerCase().split('\\').join('/'));
+    p += nDict * 128;
+    const nLeaf = i32(p); p += 4 + nLeaf * 2;
+    const nProps = i32(p); p += 4;
+    const size = nProps ? Math.floor((ofs + len - p) / nProps) : 0;
+    for (let j = 0; j < nProps; j++) {
+      const r = p + j * size;
+      props.push({ origin: [f32(r), f32(r + 4), f32(r + 8)], angles: [f32(r + 12), f32(r + 16), f32(r + 20)],
+        model: dict[dv.getUint16(r + 24, true)], skin: i32(r + 32) });
+    }
+  }
+
+  // LUMP_DISP_MULTIBLEND (63): 80 bytes per vertex of each MultiBlend displacement, in dispinfo order:
+  // vec4 layer weights, vec4 layer alphas, 4 × vec3 layer tint colours. Assigned by applyMultiblend()
+  // once the caller knows which materials use the MultiBlend shader.
+  const mbl = lump(63);
+  const multiblend = mbl.len ? new Float32Array(buf.slice(mbl.ofs, mbl.ofs + mbl.len)) : null;
+  displacements.sort((a, b) => a.di - b.di);
+
+  return { version, groups: [...groups.values()], entities, props, displacements, multiblend, stats: { dispCount, brushCount } };
+}
+
+// Gives each group with MultiBlend displacements per-vertex `mb` (4 weights) and `mbc` (4 RGB tints).
+// Records belong to displacements flagged hasMultiblend, consumed in dispinfo order.
+// Returns how many records were used, so callers can check it against the lump size.
+export function applyMultiblend(map) {
+  if (!map.multiblend) return 0;
+  const src = map.multiblend, records = src.length / 20;
+  let r = 0;
+  for (const d of map.displacements) {
+    if (!d.hasMultiblend) continue;
+    const g = d.group;
+    const nv = g.pos.length / 3;
+    g.mb ||= new Float32Array(nv * 4).fill(0);
+    g.mbc ||= new Float32Array(nv * 12).fill(1);
+    for (let k = 0; k < d.count && r < records; k++, r++) {
+      const v = d.first + k, s = r * 20;
+      for (let c = 0; c < 4; c++) g.mb[v * 4 + c] = src[s + c];
+      for (let c = 0; c < 12; c++) g.mbc[v * 12 + c] = src[s + 8 + c];
+    }
+  }
+  for (const g of map.groups) if (g.mb) {
+    // brush faces and non-multiblend vertices in a multiblend group: show layer 1 untinted
+    for (let v = 0; v < g.pos.length / 3; v++) {
+      if (g.mb[v * 4] + g.mb[v * 4 + 1] + g.mb[v * 4 + 2] + g.mb[v * 4 + 3] === 0) g.mb[v * 4] = 1;
+    }
+  }
+  return r;
+}
+
 // ---------------------------------------------------------------- assembly
 // Combines MDL + VVD + VTX into flat meshes: one per (bodypart, model, mesh) with a material slot.
 export function buildModel(mdlBuf, vvdBuf, vtxBuf) {

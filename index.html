@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dota Model Archaeology</title>
+<title>Dota Archaeology</title>
 <style>
   :root {
     --bg: #0f1216; --panel: #161b21; --line: #262e37; --text: #d7dde3; --muted: #8592a0;
@@ -62,12 +62,33 @@
   .view .timeline i.hit { animation: hit .5s ease-out; }
   @keyframes hit { from { transform: scaleY(2.2); box-shadow: 0 0 8px #5fb8ff; } to { transform: none; box-shadow: none; } }
   .view .head .mute { pointer-events: auto; padding: 4px 8px; }
+  .view .head select.worldsel { max-width: 150px; }
+  .view .worldstatus { position: absolute; right: 10px; bottom: 10px; background: rgba(15,18,22,.85); border: 1px solid var(--line);
+    border-radius: 6px; padding: 3px 8px; font-size: 11px; color: var(--muted); max-width: 60%; z-index: 2; }
   .view .blendctl { position: absolute; left: 10px; top: 66px; display: flex; gap: 8px; align-items: center;
     background: rgba(15,18,22,.85); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font-size: 12px; }
   .view .blendctl .bn { color: var(--accent2); }
   .view .blendctl .bv { color: var(--muted); font-family: ui-monospace, Consolas, monospace; min-width: 36px; }
   .view .blendctl input { width: 140px; }
-  .view .blendctl:not([hidden]) ~ .toasts, .view .toasts { top: 96px !important; }
+  .view .toasts { top: 96px !important; left: 50% !important; transform: translateX(-50%); justify-items: center !important; }
+  .view .stats { position: absolute; left: 10px; top: 96px; width: 290px; max-height: calc(100% - 300px); min-height: 120px;
+    overflow: auto; background: rgba(15,18,22,.88); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+  .view .stats .sh { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+  .view .stats .portrait { width: 64px; height: 36px; object-fit: cover; border-radius: 4px; background: #222; }
+  .view .stats .sn { font-weight: 700; font-size: 14px; }
+  .view .stats .k { color: var(--muted); }
+  .view .stats .lvl { margin: 2px 0 4px; font-size: 11px; }
+  .view .stats table { width: 100%; border-collapse: collapse; }
+  .view .stats td { padding: 1px 0; vertical-align: top; }
+  .view .stats td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .view .stats tr.chg td:last-child, .view .stats .ab.chg .at { color: var(--accent2); }
+  .view .stats tr.chg td:first-child::before, .view .stats .ab.chg .at::before { content: '● '; color: var(--accent2); }
+  .view .stats .ab-title { margin: 8px 0 4px; font-weight: 600; }
+  .view .stats .ab { display: flex; gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); }
+  .view .stats .ab img { width: 36px; height: 36px; border-radius: 4px; background: #222; flex: none; }
+  .view .stats .ab img.noicon { visibility: hidden; }
+  .view .stats .at { font-weight: 600; }
+  .view .stats .sp { font-size: 11px; }
   .view .wear { position: absolute; right: 10px; top: 68px; width: 250px; max-height: 45%; overflow: auto;
     background: rgba(15,18,22,.85); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
   .view .wear .wt { font-weight: 600; margin-bottom: 4px; }
@@ -102,8 +123,7 @@
 <div id="app">
   <aside>
     <header>
-      <h1>Dota <span>Model</span> Archaeology</h1>
-      <div class="sub">Source 1 builds, January 2011 → September 2015</div>
+      <h1>Dota Archaeology</h1>
     </header>
     <div class="controls">
       <div>
@@ -134,6 +154,9 @@
       <label><input type="checkbox" id="optSyncSeq" checked> sync animations</label>
       <label><input type="checkbox" id="optLoopAll" checked> repeat one-shots</label>
       <span class="sep"></span>
+      <label><input type="checkbox" id="optStats" checked> stats</label>
+      <label title="Hero level used for the stats panels">level <input id="optLevel" type="range" min="1" max="25" value="1" style="width:90px"> <b id="optLevelVal">1</b></label>
+      <span class="sep"></span>
       <button id="optSound" class="btn" title="Browsers only allow audio after a click">🔇 sound off</button>
       <input id="optVol" type="range" min="0" max="1" step="0.05" value="0.7" title="Volume" style="width:80px">
       <label>views <select id="optViews" style="width:auto"><option>1</option><option selected>2</option><option>3</option></select></label>
@@ -145,7 +168,8 @@
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { buildModel, materialPaths, parseVMT, parseVTF, decodeSequence, texturePath } from './source.js?v=7';
+import { buildModel, materialPaths, parseVMT, parseVTF, decodeSequence, texturePath } from './source.js?v=9';
+import { loadWorld } from './world.js?v=3';
 
 const $ = (s) => document.querySelector(s);
 const api = (p) => fetch(p).then((r) => (r.ok ? r : Promise.reject(new Error(r.status + ' ' + p))));
@@ -162,7 +186,10 @@ class View {
     this.el = document.createElement('div');
     this.el.className = 'view';
     this.el.innerHTML = `<div class="head"><select class="build"></select><select class="seq" hidden></select>`
+      + `<select class="worldsel" title="Put the model in this build's map"><option value="">no world</option>`
+      + `<option value="radiant">Radiant spawn</option><option value="dire">Dire spawn</option><option value="mid">Mid lane, river</option></select>`
       + `<button class="btn mute" title="Mute this view">🔊</button></div>`
+      + `<div class="worldstatus" hidden></div>`
       + `<div class="msg">Pick a model on the left</div><div class="info" hidden></div><div class="timeline" hidden><div></div></div>`
       + `<div class="toasts"></div>`
       + `<div class="blendctl" hidden><span class="bn"></span><input type="range" min="0" max="1" step="0.01"><span class="bv"></span></div>`;
@@ -177,7 +204,10 @@ class View {
     this.toasts = this.el.querySelector('.toasts');
     this.sel = this.el.querySelector('select.build');
     for (const b of builds) this.sel.append(new Option(b.label, b.key, false, b.key === buildKey));
-    this.sel.onchange = () => current && this.load(current);
+    this.sel.onchange = () => { if (current) this.load(current); if (this.worldMode) this.setWorld(this.worldMode); };
+    this.worldSel = this.el.querySelector('select.worldsel');
+    this.worldSel.onchange = () => { this.setWorld(this.worldSel.value); syncWorld(this); };
+    this.worldStatus = this.el.querySelector('.worldstatus');
     this.seqSel = this.el.querySelector('select.seq');
     this.seqSel.onchange = () => { this.playSequence(+this.seqSel.value); syncSequence(this); };
     this.timeline = this.el.querySelector('.timeline');
@@ -191,7 +221,7 @@ class View {
     this.el.prepend(this.renderer.domElement);
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0f1216);
-    this.camera = new THREE.PerspectiveCamera(35, 1, 1, 20000);
+    this.camera = new THREE.PerspectiveCamera(35, 1, 2, 60000);
     this.camera.position.set(220, 140, 220);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
@@ -200,8 +230,8 @@ class View {
     this.scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x302822, 1.6));
     const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(200, 400, 250); this.scene.add(key);
     const rim = new THREE.DirectionalLight(0x8fb4ff, 1.0); rim.position.set(-300, 200, -250); this.scene.add(rim);
-    const grid = new THREE.GridHelper(400, 20, 0x2c343d, 0x1c2229); this.scene.add(grid);
-    this.spin = new THREE.Group(); // turntable, around world Y
+    this.grid = new THREE.GridHelper(400, 20, 0x2c343d, 0x1c2229); this.scene.add(this.grid);
+    this.spin = new THREE.Group(); // turntable, around world Y; also where the hero stands in a world
     this.root = new THREE.Group(); // per-model up-axis correction
     this.spin.add(this.root);
     this.scene.add(this.spin);
@@ -252,6 +282,7 @@ class View {
 
   clear() {
     this.model = null; this.skeleton = null; this.anim = null;
+    this.statsPanel?.remove(); this.statsPanel = null; this.hero = null;
     if (this.blendCtl) this.blendCtl.hidden = true;
     this.wearPanel?.remove(); this.wearPanel = null; this.wear = new Map();
     this.seqSel.hidden = true; this.timeline.hidden = true;
@@ -362,7 +393,8 @@ class View {
 
     this.msg.hidden = true;
     this.fitSize = Math.max(size.x, size.y, size.z) || 100;
-    if (!this.framed || !$('#optSync').checked) this.frame(bbox);
+    if (this.worldMode) { if (!this.framed) this.frameOnHero(true); }
+    else if (!this.framed || !$('#optSync').checked) this.frame(bbox);
 
     const tris = model.meshes.reduce((s, m) => s + m.idx.length / 3, 0);
     const texRows = mats.map((m) => {
@@ -402,6 +434,98 @@ class View {
     this.seqSel.value = pick;
     this.playSequence(pick);
     this.loadWearables(token);
+    this.loadStats(token);
+  }
+
+  // ---------------------------------------------------------- stats
+  async loadStats(token) {
+    this.statsPanel?.remove();
+    this.hero = null;
+    if (!this.unit) { refreshStatDiffs(); return; }
+    const h = await api(`/api/hero?build=${this.build}&unit=${this.unit.unit}`).then((r) => r.json()).catch(() => null);
+    if (token !== this.token || !h) return;
+    this.hero = h;
+    const panel = document.createElement('div');
+    panel.className = 'stats';
+    panel.hidden = !$('#optStats').checked;
+    this.el.append(panel);
+    this.statsPanel = panel;
+    this.renderStats();
+    for (const img of panel.querySelectorAll('img[data-img]')) {
+      uiImage(this.build, img.dataset.img.split('|')).then((url) => { if (url) img.src = url; else img.classList.add('noicon'); });
+    }
+  }
+
+  renderStats() {
+    const h = this.hero, panel = this.statsPanel;
+    if (!h || !panel) return;
+    const s = h.stats, n = (k, d = 0) => (s[k] !== undefined && s[k] !== '' ? parseFloat(s[k]) : d);
+    const L = heroLevel, lv = (base, gain) => n(base) + n(gain) * (L - 1);
+    const str = lv('AttributeBaseStrength', 'AttributeStrengthGain');
+    const agi = lv('AttributeBaseAgility', 'AttributeAgilityGain');
+    const int = lv('AttributeBaseIntelligence', 'AttributeIntelligenceGain');
+    const prim = (s.AttributePrimary || '').replace('DOTA_ATTRIBUTE_', '');
+    const primVal = { STRENGTH: str, AGILITY: agi, INTELLECT: int }[prim] || 0;
+    const ranged = /RANGED/.test(s.AttackCapabilities || '');
+    const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    const fmt = (x, d = 0) => (Number.isFinite(x) ? x.toFixed(d) : '—');
+    // DotA Allstars / Source 1 Dota 2 formulas: 19 HP and 0.03 HP regen per STR, 13 mana and 0.04 mana
+    // regen per INT, 1/7 armor and 1% attack speed per AGI; primary attribute adds damage.
+    const rows = h.isHero ? [
+      ['str', 'Strength', `${fmt(str, 1)} <span class="k">+${n('AttributeStrengthGain')}</span>`, `${n('AttributeBaseStrength')}+${n('AttributeStrengthGain')}`],
+      ['agi', 'Agility', `${fmt(agi, 1)} <span class="k">+${n('AttributeAgilityGain')}</span>`, `${n('AttributeBaseAgility')}+${n('AttributeAgilityGain')}`],
+      ['int', 'Intelligence', `${fmt(int, 1)} <span class="k">+${n('AttributeIntelligenceGain')}</span>`, `${n('AttributeBaseIntelligence')}+${n('AttributeIntelligenceGain')}`],
+      ['hp', 'Health', fmt(n('StatusHealth', 150) + str * 19), ''],
+      ['mana', 'Mana', fmt(n('StatusMana') + int * 13), ''],
+      ['hpregen', 'HP regen', fmt(n('StatusHealthRegen') + str * 0.03, 2), s.StatusHealthRegen],
+      ['manaregen', 'Mana regen', fmt(n('StatusManaRegen') + int * 0.04, 2), s.StatusManaRegen],
+      ['armor', 'Armor', fmt(n('ArmorPhysical') + agi / 7, 1), s.ArmorPhysical],
+      ['dmg', 'Damage', `${fmt(n('AttackDamageMin') + primVal)}–${fmt(n('AttackDamageMax') + primVal)}`, `${s.AttackDamageMin}-${s.AttackDamageMax}`],
+      ['atk', 'Attack time', `${fmt(n('AttackRate', 1.7) / (1 + agi / 100), 2)} s <span class="k">BAT ${n('AttackRate', 1.7)}</span>`, s.AttackRate],
+      ['range', 'Attack range', `${n('AttackRange')} ${ranged ? '<span class="k">ranged</span>' : '<span class="k">melee</span>'}`, s.AttackRange],
+      ['ms', 'Move speed', n('MovementSpeed'), s.MovementSpeed],
+      ['turn', 'Turn rate', n('MovementTurnRate'), s.MovementTurnRate],
+      ['vision', 'Vision day/night', `${n('VisionDaytimeRange', 1800)} / ${n('VisionNighttimeRange', 800)}`, `${s.VisionDaytimeRange}/${s.VisionNighttimeRange}`],
+      ['mr', 'Magic resist', `${n('ArmorMagical', 25)}%`, s.ArmorMagical],
+    ] : [
+      ['hp', 'Health', n('StatusHealth'), s.StatusHealth],
+      ['armor', 'Armor', n('ArmorPhysical'), s.ArmorPhysical],
+      ['dmg', 'Damage', `${n('AttackDamageMin')}–${n('AttackDamageMax')}`, `${s.AttackDamageMin}-${s.AttackDamageMax}`],
+      ['atk', 'Attack time', n('AttackRate'), s.AttackRate],
+      ['range', 'Attack range', n('AttackRange'), s.AttackRange],
+      ['ms', 'Move speed', n('MovementSpeed'), s.MovementSpeed],
+      ['bounty', 'Gold bounty', `${n('BountyGoldMin')}–${n('BountyGoldMax')}`, `${s.BountyGoldMin}-${s.BountyGoldMax}`],
+      ['xp', 'XP bounty', n('BountyXP'), s.BountyXP],
+    ];
+    const primLabel = { STRENGTH: 'Strength', AGILITY: 'Agility', INTELLECT: 'Intelligence' }[prim];
+    panel.innerHTML = `
+      <div class="sh"><img data-img="resource/flash3/images/heroes/${esc(h.short)}.png|materials/vgui/hud/heroportraits/portrait_${esc(h.short)}.vmt|materials/vgui/hud/heroportraits/portrait_${esc(h.short)}.vtf" class="portrait" alt="">
+        <div><div class="sn">${esc(h.name)}</div><div class="k">${esc(h.unit)}${primLabel ? ` · primary ${primLabel}` : ''}</div></div></div>
+      ${h.isHero ? `<div class="k lvl">at level ${L} · DotA formulas</div>` : ''}
+      <table>${rows.map(([key, label, value, raw]) =>
+        `<tr data-k="${key}" data-raw="${esc(raw ?? value)}"><td class="k">${label}</td><td>${value}</td></tr>`).join('')}</table>
+      ${h.abilities.length ? '<div class="ab-title">Abilities</div>' : ''}
+      ${h.abilities.map((a) => {
+        const meta = [a.AbilityCooldown && `cd ${a.AbilityCooldown}`, a.AbilityManaCost && `mana ${a.AbilityManaCost}`,
+          a.AbilityCastRange && `range ${a.AbilityCastRange}`, a.AbilityDamage && `dmg ${a.AbilityDamage}`].filter(Boolean).join(' · ');
+        const sig = [a.AbilityCooldown, a.AbilityManaCost, a.AbilityCastRange, a.AbilityDamage, ...a.specials.map((x) => x.key + x.value)].join('|');
+        return `<div class="ab" data-k="ab:${esc(a.name)}" data-raw="${esc(sig)}" title="${esc(a.description)}">
+          <img data-img="resource/flash3/images/spellicons/${esc(a.icon)}.png|materials/vgui/hud/spellicons/${esc(a.icon)}.vtf|materials/vgui/hud/spellicons/${esc(a.icon)}.vmt" alt="">
+          <div><div class="at">${esc(a.title)}</div><div class="k">${esc(meta)}</div>
+          ${a.specials.map((x) => `<div class="sp"><span class="k">${esc((x.label || x.key).replace(/^%/, '').replace(/:$/, ''))}</span> ${esc(x.value)}</div>`).join('')}</div></div>`;
+      }).join('')}`;
+    refreshStatDiffs();
+  }
+
+  // re-render numbers for a new level without re-decoding the icons
+  renderStatsKeepIcons() {
+    if (!this.statsPanel) return;
+    const icons = [...this.statsPanel.querySelectorAll('img[data-img]')].map((i) => [i.dataset.img, i.src]);
+    this.renderStats();
+    for (const img of this.statsPanel.querySelectorAll('img[data-img]')) {
+      const hit = icons.find(([k]) => k === img.dataset.img);
+      if (hit && hit[1]) img.src = hit[1];
+    }
   }
 
   addMeshes(model, mats, skeleton, group, bbox) {
@@ -541,6 +665,69 @@ class View {
       group.visible = entry.box.checked;
     })();
     return entry.loading;
+  }
+
+  // ---------------------------------------------------------- world
+  // Puts the model into this build's dota.bsp at a spawn spot. The map is built once per build in
+  // Source space and shared between views (geometry and materials are reused by clone()).
+  async setWorld(mode) {
+    this.worldMode = mode || '';
+    this.worldSel.value = this.worldMode;
+    const token = (this.worldToken = Symbol());
+    if (this.worldObj) { this.scene.remove(this.worldObj); this.worldObj = null; }
+    if (!mode) {
+      this.spin.position.set(0, 0, 0);
+      this.spin.rotation.y = 0;
+      this.grid.visible = true;
+      this.scene.fog = null;
+      this.scene.background.set(0x0f1216);
+      this.worldStatus.hidden = true;
+      this.framed = false;
+      if (this.model) this.frameOnHero(false);
+      return;
+    }
+    const build = this.build;
+    this.worldStatus.hidden = false;
+    const status = (t) => { if (token === this.worldToken) this.worldStatus.textContent = `${builds.find((b) => b.key === build)?.label.slice(0, 10)} map · ${t}`; };
+    status('loading…');
+    let world;
+    try { world = await loadWorld(build, tryFile, status); }
+    catch (e) { status('could not load: ' + e.message); return; }
+    if (token !== this.worldToken) return;
+    const container = new THREE.Group();
+    container.rotation.x = -Math.PI / 2; // Source Z-up -> Y-up
+    container.add(world.group.clone());
+    this.scene.add(container);
+    this.worldObj = container;
+    this.grid.visible = false;
+    this.scene.background.set(0x8fa7b8);
+    this.scene.fog = new THREE.Fog(0x8fa7b8, 4000, 16000);
+    const spot = world.spots[mode] || world.spots.radiant;
+    this.spin.position.set(spot.pos[0], spot.pos[2], -spot.pos[1]);
+    this.spin.rotation.y = THREE.MathUtils.degToRad(spot.yaw);
+    this.spotLabel = spot.label;
+    status(`${spot.label} · ${spot.pos.map(Math.round).join(', ')} · ${world.stats.trees} trees, ${world.stats.props} props`);
+    this.frameOnHero(true);
+    // models stream in; swap in a complete copy once they have all arrived
+    world.ready.then(() => {
+      if (token !== this.worldToken) return;
+      container.clear();
+      container.add(world.group.clone());
+      status(`${spot.label} · ${spot.pos.map(Math.round).join(', ')} · ${world.stats.trees} trees, ${world.stats.props} props, ${world.stats.models} models`);
+    });
+  }
+
+  frameOnHero(inWorld) {
+    const target = this.spin.position.clone().add(new THREE.Vector3(0, inWorld ? 90 : 0, 0));
+    const d = inWorld ? 650 : (this.fitSize || 200) * 1.9;
+    const yaw = this.spin.rotation.y;
+    // stand a little behind and to the side of the hero, looking the way they face
+    const back = new THREE.Vector3(-Math.cos(yaw), 0, Math.sin(yaw));
+    const side = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+    this.controls.target.copy(target);
+    this.camera.position.copy(target).addScaledVector(back, d * 0.8).addScaledVector(side, d * 0.45).add(new THREE.Vector3(0, d * 0.45, 0));
+    this.controls.update();
+    this.framed = true;
   }
 
   restPose() {
@@ -811,6 +998,71 @@ function eventSound(e, soundSet) {
 let views = [];
 let syncing = false;
 let playing = true, speed = 1;
+let heroLevel = 1;
+
+// UI images (ability icons, portraits) for <img> tags. The builds store them three ways:
+//   Flash-era PNGs (resource/flash3/images/…), VTF textures, and VMT "Subrect" materials that cut a
+//   region out of a sheet (July 2011 portraits). `candidates` is tried in order; cached per build.
+const imgCache = new Map();
+function vtfToCanvas(buf) {
+  const t = parseVTF(buf);
+  const c = document.createElement('canvas');
+  c.width = t.width; c.height = t.height;
+  c.getContext('2d').putImageData(new ImageData(t.rgba, t.width, t.height), 0, 0);
+  return c;
+}
+async function loadUiImage(build, path) {
+  const buf = await tryFile(build, path);
+  if (!buf) return null;
+  if (path.endsWith('.png') || path.endsWith('.jpg')) return URL.createObjectURL(new Blob([buf]));
+  if (path.endsWith('.vtf')) return vtfToCanvas(buf).toDataURL();
+  // .vmt: plain material → its $basetexture; Subrect → crop $Pos/$Size out of $Material's texture
+  const vmt = parseVMT(new TextDecoder().decode(buf));
+  if (/subrect/i.test(vmt.shader || '')) {
+    const sheet = await tryFile(build, `materials/${(vmt.params['$material'] || '').toLowerCase().split('\\').join('/')}.vmt`);
+    if (!sheet) return null;
+    const tp = texturePath(parseVMT(new TextDecoder().decode(sheet)).params['$basetexture']);
+    const tex = tp && await tryFile(build, tp);
+    if (!tex) return null;
+    const src = vtfToCanvas(tex);
+    const [x, y] = (vmt.params['$pos'] || '0 0').split(/\s+/).map(Number);
+    const [w, h] = (vmt.params['$size'] || `${src.width} ${src.height}`).split(/\s+/).map(Number);
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(src, x, y, w, h, 0, 0, w, h);
+    return c.toDataURL();
+  }
+  const tp = texturePath(vmt.params['$basetexture']);
+  const tex = tp && await tryFile(build, tp);
+  return tex ? vtfToCanvas(tex).toDataURL() : null;
+}
+function uiImage(build, candidates) {
+  const key = build + '|' + candidates.join('|');
+  if (!imgCache.has(key)) {
+    imgCache.set(key, (async () => {
+      for (const p of candidates) {
+        try { const url = await loadUiImage(build, p); if (url) return url; } catch { /* try the next one */ }
+      }
+      return null;
+    })());
+  }
+  return imgCache.get(key);
+}
+
+// Marks stat rows / abilities whose raw value differs between views showing the same unit
+function refreshStatDiffs() {
+  const shown = views.filter((v) => v.hero && v.statsPanel);
+  for (const v of shown) {
+    const peers = shown.filter((o) => o !== v && o.hero.unit === v.hero.unit);
+    for (const row of v.statsPanel.querySelectorAll('[data-k]')) {
+      const differs = peers.some((o) => {
+        const other = o.statsPanel.querySelector(`[data-k="${CSS.escape(row.dataset.k)}"]`);
+        return !other || other.dataset.raw !== row.dataset.raw;
+      });
+      row.classList.toggle('chg', peers.length > 0 && differs);
+    }
+  }
+}
 let preferredSequence = null; // sequence name to show first in every view
 
 // picking a sequence in one view picks the same-named one in the others, when it exists
@@ -828,12 +1080,22 @@ function syncSequence(src) {
 function syncFrom(src) {
   if (syncing || !$('#optSync').checked) return;
   syncing = true;
+  // In a world each view looks at its own hero (spawns differ per build), so share the camera's
+  // offset from its target rather than absolute positions.
+  const offset = src.camera.position.clone().sub(src.controls.target);
+  const anyWorld = views.some((v) => v.worldMode);
   for (const v of views) if (v !== src) {
-    v.camera.position.copy(src.camera.position);
-    v.controls.target.copy(src.controls.target);
+    if (!anyWorld) v.controls.target.copy(src.controls.target);
+    v.camera.position.copy(v.controls.target).add(offset);
     v.controls.update();
   }
   syncing = false;
+}
+
+// choosing a world spot in one view applies the same spot to the others (each in its own build's map)
+function syncWorld(src) {
+  if (!$('#optSync').checked) return;
+  for (const v of views) if (v !== src && v.worldMode !== src.worldMode) v.setWorld(src.worldMode);
 }
 
 function applyOptions(v) {
@@ -930,6 +1192,13 @@ $('#optSound').onclick = async () => {
   if (audio.enabled) { audio.enabled = false; $('#optSound').textContent = '🔇 sound off'; return; }
   await unlockAudio();
   for (const v of views) if (v.anim) v.anim.prevCycle = v.anim.cycle;
+};
+$('#optStats').onchange = () => views.forEach((v) => { if (v.statsPanel) v.statsPanel.hidden = !$('#optStats').checked; });
+$('#optLevel').oninput = () => {
+  heroLevel = +$('#optLevel').value;
+  $('#optLevelVal').textContent = heroLevel;
+  views.forEach((v) => v.renderStatsKeepIcons());
+  refreshStatDiffs();
 };
 $('#optVol').oninput = () => { audio.volume = +$('#optVol').value; if (audio.master) audio.master.gain.value = audio.volume; };
 addEventListener('resize', () => views.forEach((v) => v.resize()));

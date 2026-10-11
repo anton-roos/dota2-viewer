@@ -249,6 +249,67 @@ class Build:
         return out
 
 
+    def localization(self):
+        """Token -> English string from resource/dota_english.txt (UTF-16 KeyValues)."""
+        if not hasattr(self, '_loc'):
+            self._loc = {}
+            text = self.text('resource/dota_english.txt') or ''
+            for k, v in walk_pairs(kv_pairs(text)):
+                self._loc.setdefault(k.lower(), v)
+        return self._loc
+
+    def _kv_blocks(self, path):
+        cache = self.__dict__.setdefault('_kvcache', {})
+        if path not in cache:
+            top = next((v for k, v in kv_pairs(self.text(path) or '') if isinstance(v, list)), [])
+            cache[path] = {k: v for k, v in top if isinstance(v, list)}
+        return cache[path]
+
+    def hero(self, unit):
+        """Stats and abilities of a hero or unit, merged over its base entry, with English names."""
+        loc = self.localization()
+        for path, base in (('scripts/npc/npc_heroes.txt', 'npc_dota_hero_base'),
+                           ('scripts/npc/npc_units.txt', 'npc_dota_units_base')):
+            blocks = self._kv_blocks(path)
+            if unit in blocks:
+                break
+        else:
+            return None
+        flat = lambda fields: {k: v for k, v in fields if isinstance(v, str)}
+        stats = {**flat(blocks.get(base, [])), **flat(blocks[unit])}
+
+        abilities_kv = self._kv_blocks('scripts/npc/npc_abilities.txt')
+        abilities = []
+        for i in range(1, 9):
+            name = stats.get(f'Ability{i}', '')
+            if not name or name == 'attribute_bonus':  # the generic +stats ability every hero has
+                continue
+            fields = abilities_kv.get(name, [])
+            a = flat(fields)
+            specials = []
+            for k, v in fields:
+                if k == 'AbilitySpecial' and isinstance(v, list):
+                    for _, entry in v:
+                        if isinstance(entry, list):
+                            for sk, sv in entry:
+                                if isinstance(sv, str) and sk != 'var_type':
+                                    label = loc.get(f'dota_tooltip_ability_{name}_{sk}'.lower(), '')
+                                    specials.append({'key': sk, 'value': sv, 'label': label})
+            abilities.append({
+                'slot': i, 'name': name,
+                'title': loc.get(f'dota_tooltip_ability_{name}'.lower(), name),
+                'description': loc.get(f'dota_tooltip_ability_{name}_description'.lower(), ''),
+                'icon': a.get('AbilityTextureName') or name,
+                **{k: a[k] for k in ('AbilityBehavior', 'AbilityUnitDamageType', 'AbilityCastRange',
+                                     'AbilityCooldown', 'AbilityManaCost', 'AbilityDamage',
+                                     'AbilityDuration', 'AbilityType') if k in a},
+                'specials': specials,
+            })
+        short = unit.replace('npc_dota_hero_', '')
+        return {'unit': unit, 'name': loc.get(unit.lower(), short.replace('_', ' ').title()),
+                'short': short, 'isHero': unit.startswith('npc_dota_hero_'),
+                'stats': stats, 'abilities': abilities}
+
     def wearables(self):
         """Hero unit -> wearable items from items_game.txt (prefabs resolved), defaults first."""
         if hasattr(self, '_wearables'):
@@ -386,6 +447,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, json.dumps(get_build(q['build']).sounds()).encode(), 'application/json')
             if u.path == '/api/units':
                 return self.send(200, json.dumps(get_build(q['build']).units()).encode(), 'application/json')
+            if u.path == '/api/hero':
+                data = get_build(q['build']).hero(q['unit'])
+                return self.send(200 if data else 404, json.dumps(data).encode(), 'application/json')
             if u.path == '/api/wearables':
                 b = get_build(q['build'])
                 hero = q.get('hero')
@@ -397,7 +461,7 @@ class Handler(BaseHTTPRequestHandler):
                 if data is None:
                     return self.send(404, b'not found', 'text/plain')
                 return self.send(200, data)
-            static = {'/': 'index.html', '/index.html': 'index.html', '/source.js': 'source.js'}
+            static = {'/': 'index.html', '/index.html': 'index.html', '/source.js': 'source.js', '/world.js': 'world.js'}
             if u.path in static:
                 fn = os.path.join(HERE, static[u.path])
                 with open(fn, 'rb') as f:
