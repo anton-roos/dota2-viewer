@@ -22,11 +22,36 @@ PORT = 5180
 # from the folder name and the PatchVersion in dota\steam.inf.
 BUILDS_DIR = os.path.join(os.path.dirname(HERE), 'builds')
 
-KNOWN_LABELS = {
-    '2011-01-15': 'January 2011 (depot 571 v0, PatchVersion 37)',
-    '2011-07-14': 'July 2011 (depot 681 v0, PatchVersion 38)',
-    '2015-09-02': '6.84c (Sept 2015, last Source 1)',
+# Labels read "date · version · note". Dota 2 shared DotA Allstars' version numbers; for the 2011
+# builds the matching DotA version is inferred from items that DotA added or removed (see dota_version).
+KNOWN = {
+    '2011-01-15': ('content only, earliest surviving build', None),
+    '2011-01-15_v0': ('content only, earliest surviving build', None),
+    '2011-07-14': ('July snapshot, a month before Gamescom', None),
+    '2015-09-02': ('last Source 1', '6.84c'),
 }
+
+
+def dota_version(game):
+    """Which DotA Allstars version a build's item list matches, from items DotA added or removed:
+    Arcane Ring removed in 6.68; Smoke of Deceit, Medallion of Courage, Drum added in 6.70;
+    Veil of Discord added and Smoke's restock raised from 600 to 720 s in 6.72."""
+    try:
+        with open(os.path.join(game, 'scripts', 'npc', 'items.txt'), encoding='utf-8', errors='replace') as f:
+            text = f.read()
+    except OSError:
+        return None
+    has = lambda item: f'"{item}"' in text
+    smoke = text.find('"item_smoke_of_deceit"')
+    smoke_720 = smoke >= 0 and '"ItemStockTime"' in text[smoke:smoke + 4000] and \
+        '720' in text[smoke:smoke + 4000].split('"ItemStockTime"', 1)[1][:30]
+    if has('item_veil_of_discord') or smoke_720:
+        return 'DotA 6.72'
+    if has('item_smoke_of_deceit') or has('item_medallion_of_courage'):
+        return 'DotA 6.70–6.71'
+    if has('item_arcane_ring'):
+        return 'DotA ≤6.67'
+    return 'DotA 6.68–6.69'
 
 
 def discover_builds():
@@ -38,24 +63,27 @@ def discover_builds():
         game = os.path.join(root, 'dota')
         if not os.path.isdir(game):
             continue
-        label = KNOWN_LABELS.get(name)
+        date = name[:10]
+        note, version = KNOWN.get(name, (None, None))
         info_path = os.path.join(root, 'build.json')  # written by tools/build_versions.py
-        if not label and os.path.isfile(info_path):
+        if note is None and os.path.isfile(info_path):
             try:
                 with open(info_path) as f:
                     info = json.load(f)
-                label = (f"{info['published'][:16]} · content v{info['content']['version']}"
-                         f" · client v{info['client']['version']} · engine v{info['engine']['version']}")
+                date = info['published'][:10]
+                note = (f"content v{info['content']['version']} · client v{info['client']['version']}"
+                        f" · engine v{info['engine']['version']}")
             except (OSError, ValueError, KeyError):
-                label = None
-        if not label:
-            patch = ''
+                note = None
+        if note is None:
             try:
                 with open(os.path.join(game, 'steam.inf'), encoding='latin1') as f:
                     patch = next((l.split('=', 1)[1].strip() for l in f if l.startswith('PatchVersion')), '')
+                note = f'PatchVersion {patch}' if patch else ''
             except OSError:
-                pass
-            label = name + (f' (PatchVersion {patch})' if patch else '')
+                note = ''
+        version = version or dota_version(game) or '?'
+        label = ' · '.join(p for p in (date, version, note) if p)
         builds[name] = {'label': label, 'game': game, 'platform': os.path.join(root, 'platform')}
     return builds
 
@@ -336,9 +364,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header('Content-Type', ctype)
         self.send_header('Content-Length', str(len(body)))
-        # game files never change; the viewer's own html/js do while it is being worked on
-        static = ctype.startswith('text/')
-        self.send_header('Cache-Control', 'no-store' if static else 'max-age=3600')
+        # Only raw game files (octet-stream) are safe to cache: they never change. The viewer's own
+        # html/js and the JSON lists (builds, models, sounds…) change as builds are added.
+        cacheable = ctype == 'application/octet-stream'
+        self.send_header('Cache-Control', 'max-age=3600' if cacheable else 'no-store')
         self.end_headers()
         self.wfile.write(body)
 
