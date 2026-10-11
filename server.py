@@ -16,24 +16,51 @@ from urllib.parse import urlparse, parse_qs
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT = 5180
 
-# Each build is a "dota" game folder: pak01_dir.vpk plus loose files, plus an optional platform folder.
-BUILDS = {
-    'jan2011': {
-        'label': 'January 2011 (depot 571 v0, PatchVersion 37)',
-        'game': r'D:\steam2browser\steam2info\extracted\571_0\dota',
-        'platform': r'D:\steam2browser\steam2info\extracted\571_0\platform',
-    },
-    'jul2011': {
-        'label': 'July 2011 (depot 681 v0, PatchVersion 38)',
-        'game': r'D:\Games\681_0\dota',
-        'platform': r'D:\Games\681_0\platform',
-    },
-    'dota684': {
-        'label': '6.84c (Sept 2015, last Source 1)',
-        'game': r'D:\Games\Dota 2\dota',
-        'platform': r'D:\Games\Dota 2\platform',
-    },
+# Builds are discovered from ..\builds: every sub-folder that contains a "dota" game folder
+# (pak01_dir.vpk plus loose files, and an optional "platform" folder) becomes a build, keyed by
+# its folder name, e.g. builds\2011-07-14. Known builds get a descriptive label; others are labelled
+# from the folder name and the PatchVersion in dota\steam.inf.
+BUILDS_DIR = os.path.join(os.path.dirname(HERE), 'builds')
+
+KNOWN_LABELS = {
+    '2011-01-15': 'January 2011 (depot 571 v0, PatchVersion 37)',
+    '2011-07-14': 'July 2011 (depot 681 v0, PatchVersion 38)',
+    '2015-09-02': '6.84c (Sept 2015, last Source 1)',
 }
+
+
+def discover_builds():
+    builds = {}
+    if not os.path.isdir(BUILDS_DIR):
+        return builds
+    for name in sorted(os.listdir(BUILDS_DIR)):
+        root = os.path.join(BUILDS_DIR, name)
+        game = os.path.join(root, 'dota')
+        if not os.path.isdir(game):
+            continue
+        label = KNOWN_LABELS.get(name)
+        info_path = os.path.join(root, 'build.json')  # written by tools/build_versions.py
+        if not label and os.path.isfile(info_path):
+            try:
+                with open(info_path) as f:
+                    info = json.load(f)
+                label = (f"{info['published'][:16]} · content v{info['content']['version']}"
+                         f" · client v{info['client']['version']} · engine v{info['engine']['version']}")
+            except (OSError, ValueError, KeyError):
+                label = None
+        if not label:
+            patch = ''
+            try:
+                with open(os.path.join(game, 'steam.inf'), encoding='latin1') as f:
+                    patch = next((l.split('=', 1)[1].strip() for l in f if l.startswith('PatchVersion')), '')
+            except OSError:
+                pass
+            label = name + (f' (PatchVersion {patch})' if patch else '')
+        builds[name] = {'label': label, 'game': game, 'platform': os.path.join(root, 'platform')}
+    return builds
+
+
+BUILDS = discover_builds()
 
 
 class VPK:

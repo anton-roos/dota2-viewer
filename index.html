@@ -849,9 +849,13 @@ function applyOptions(v) {
 
 function layout() {
   const n = +$('#optViews').value;
-  const defaults = ['jan2011', 'jul2011', 'dota684'];
+  // builds are keyed by folder name (a date); prefer the three original builds, else spread over the list
+  const keys = builds.map((b) => b.key);
+  const preferred = ['2011-01-15', '2011-07-14', '2015-09-02'];
+  const pickDefault = (i) => (keys.includes(preferred[i]) ? preferred[i]
+    : keys[Math.min(keys.length - 1, Math.round(i * (keys.length - 1) / 2))]);
   while (views.length < n) {
-    const v = new View(views.length, defaults[views.length]);
+    const v = new View(views.length, pickDefault(views.length));
     views.push(v);
     $('#views').append(v.el);
     if (current) v.load(current);
@@ -901,7 +905,8 @@ function select(p) {
 
 // ------------------------------------------------------------ boot
 builds = (await api('/api/builds').then((r) => r.json())).filter((b) => b.available);
-for (const b of builds) $('#listBuild').append(new Option(b.label, b.key, false, b.key === 'jul2011'));
+const listDefault = builds.some((b) => b.key === '2011-07-14') ? '2011-07-14' : builds[builds.length - 1]?.key;
+for (const b of builds) $('#listBuild').append(new Option(b.label, b.key, false, b.key === listDefault));
 $('#listBuild').onchange = refreshList;
 $('#q').oninput = refreshList;
 for (const c of document.querySelectorAll('#chips button')) c.onclick = () => {
