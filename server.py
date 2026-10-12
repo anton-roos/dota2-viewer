@@ -7,7 +7,9 @@ so the browser viewer can parse models and textures itself. Standard library onl
 """
 import json
 import os
+import re
 import struct
+import zlib
 import sys
 import threading
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
@@ -22,18 +24,24 @@ PORT = 5180
 # from the folder name and the PatchVersion in dota\steam.inf.
 BUILDS_DIR = os.path.join(os.path.dirname(HERE), 'builds')
 
-# Labels read "date · version · note". Dota 2 shared DotA Allstars' version numbers; for the 2011
-# builds the matching DotA version is inferred from items that DotA added or removed (see dota_version).
+# Labels read "date · version · note", with the version as Dota 2 itself numbered it. Dota 2 took its
+# gameplay version numbers from DotA Allstars, but only at "parity" patches: Valve's notes record
+# 6.70 parity on 2011-01-18, 6.72 on 2011-07-22 and 6.73 on 2012-01-12. DotA's letter releases of that
+# era (6.70b/c, 6.71, 6.72b-f…) were Warcraft III bug-fix builds that Dota 2 never shipped separately,
+# so a 2011 build has no letter. Dota 2's own letter patches start later (6.84b and 6.84c are Dota 2 patches).
+# Dates of Dota 2 versions from Liquipedia's Game Versions table.
+DOTA2_VERSIONS = [('2011-01-18', '6.70'), ('2011-07-22', '6.72'), ('2012-01-12', '6.73'), ('2012-03-15', '6.74'),
+                  ('2015-04-30', '6.84'), ('2015-05-09', '6.84b'), ('2015-05-18', '6.84c'), ('2015-09-24', '6.85')]
+
 KNOWN = {
-    '2011-01-15': ('content only, earliest surviving build', None),
-    '2011-01-15_v0': ('content only, earliest surviving build', None),
+    '2011-01-15_v0': ('content only (depot 571 v0), earliest surviving build', None),
     '2011-07-14': ('July snapshot, a month before Gamescom', None),
-    '2015-09-02': ('last Source 1', '6.84c'),
+    '2015-09-02': ('last Source 1', None),
 }
 
 
-def dota_version(game):
-    """Which DotA Allstars version a build's item list matches, from items DotA added or removed:
+def content_stage(game):
+    """Which DotA version a build's item list has been ported up to, from items DotA added or removed:
     Arcane Ring removed in 6.68; Smoke of Deceit, Medallion of Courage, Drum added in 6.70;
     Veil of Discord added and Smoke's restock raised from 600 to 720 s in 6.72."""
     try:
@@ -43,15 +51,48 @@ def dota_version(game):
         return None
     has = lambda item: f'"{item}"' in text
     smoke = text.find('"item_smoke_of_deceit"')
-    smoke_720 = smoke >= 0 and '"ItemStockTime"' in text[smoke:smoke + 4000] and \
-        '720' in text[smoke:smoke + 4000].split('"ItemStockTime"', 1)[1][:30]
+    smoke_720 = smoke >= 0 and '"ItemStockTime"' in text[smoke:smoke + 4000] and         '720' in text[smoke:smoke + 4000].split('"ItemStockTime"', 1)[1][:30]
     if has('item_veil_of_discord') or smoke_720:
-        return 'DotA 6.72'
+        return '6.72'
     if has('item_smoke_of_deceit') or has('item_medallion_of_courage'):
-        return 'DotA 6.70–6.71'
+        return '6.70'
     if has('item_arcane_ring'):
-        return 'DotA ≤6.67'
-    return 'DotA 6.68–6.69'
+        return '≤6.67'
+    return '6.68'
+
+
+def dota2_version(date, game):
+    """The Dota 2 version a build belongs to: the last Dota 2 version released by its date. For 2011, the
+    item list shows how far the DotA port had got; a build that already carries the next version's items
+    before Valve's patch notes announced it is marked as parity work in progress."""
+    official = next((v for d, v in reversed(DOTA2_VERSIONS) if d <= date), None)
+    stage = content_stage(game) if date < '2012' else None
+    if stage is None:
+        return official
+    if official is None:
+        return 'pre-6.70'
+    if stage != official and stage > official:
+        return f'{official} → {stage} parity WIP'
+    return official
+
+
+def binary_info(root, game):
+    """Dota 2's own build identifiers: steam.inf PatchVersion and the engine's compile date."""
+    info = {}
+    try:
+        with open(os.path.join(game, 'steam.inf'), encoding='latin1') as f:
+            info['patchVersion'] = next((l.split('=', 1)[1].strip() for l in f if l.startswith('PatchVersion')), None)
+    except OSError:
+        pass
+    try:
+        with open(os.path.join(root, 'bin', 'engine.dll'), 'rb') as f:
+            data = f.read()
+        dates = re.findall(rb'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) [ 0-3]\d 20\d\d', data)
+        if dates:
+            info['compiled'] = max(dates, key=dates.count).decode()
+    except OSError:
+        pass
+    return info
 
 
 def discover_builds():
@@ -82,9 +123,10 @@ def discover_builds():
                 note = f'PatchVersion {patch}' if patch else ''
             except OSError:
                 note = ''
-        version = version or dota_version(game) or '?'
+        version = version or dota2_version(date, game) or '?'
         label = ' · '.join(p for p in (date, version, note) if p)
-        builds[name] = {'label': label, 'game': game, 'platform': os.path.join(root, 'platform')}
+        builds[name] = {'label': label, 'game': game, 'platform': os.path.join(root, 'platform'),
+                        'version': version, **binary_info(root, game)}
     return builds
 
 
@@ -152,11 +194,16 @@ class Build:
         self.key = key
         self.label = cfg['label']
         self.roots = [r for r in (cfg['game'], cfg.get('platform')) if r and os.path.isdir(r)]
+        # every *_dir.vpk in the game folder (6.84 keeps voice in sound_vo_english_dir.vpk), pak01 first
         self.vpks = []
         for root in self.roots:
-            p = os.path.join(root, 'pak01_dir.vpk')
-            if os.path.exists(p):
-                self.vpks.append(VPK(p))
+            names = sorted((f for f in os.listdir(root) if f.lower().endswith('_dir.vpk')),
+                           key=lambda f: (f.lower() != 'pak01_dir.vpk', f.lower()))
+            for f in names:
+                try:
+                    self.vpks.append(VPK(os.path.join(root, f)))
+                except (OSError, ValueError, struct.error):
+                    pass
         self.available = bool(self.roots)
 
     def read(self, path):
@@ -202,8 +249,117 @@ class Build:
         if data is None:
             return None
         if data[:2] in (b'\xff\xfe', b'\xfe\xff'):
-            return data.decode('utf-16')
+            return data.decode('utf-16', 'replace')  # some subtitle files end on an odd byte
         return data.decode('utf-8', 'replace')
+
+    # ---------------------------------------------------------------- audio
+    def subtitles(self):
+        """Voice-line token -> English subtitle text. 2011 builds ship them as KeyValues text
+        (resource/subtitles_*_english.txt); 6.84 ships compiled closed captions (.dat, 'VCCD'),
+        keyed by CRC32 of the lower-case token — those are stored under 'crc:<value>'."""
+        if not hasattr(self, '_subs'):
+            self._subs = {}
+            for path in self.list_prefix('resource/', ''):
+                name = path.rsplit('/', 1)[-1]
+                if not (name.startswith(('subtitles', 'closecaption')) and 'english' in name):
+                    continue
+                if name.endswith('.txt'):
+                    for k, v in walk_pairs(kv_pairs(self.text(path) or '')):
+                        self._subs.setdefault(k.lower(), v)
+                elif name.endswith('.dat'):
+                    for crc, text in read_vccd(self.read(path) or b'').items():
+                        self._subs.setdefault(f'crc:{crc}', text)
+        return self._subs
+
+    def subtitle(self, token):
+        subs = self.subtitles()
+        return subs.get(token.lower()) or subs.get(f'crc:{zlib.crc32(token.lower().encode())}', '')
+
+    def soundscript_entries(self, path):
+        """Ordered soundscript entries of one file: [{name, waves, volume, pitch}]."""
+        out = []
+        for name, body in kv_pairs(self.text(path) or ''):
+            if not isinstance(body, list):
+                continue
+            e = {'name': name, 'waves': []}
+            for k, v in walk_pairs(body):
+                k = k.lower()
+                if k == 'wave':
+                    e['waves'].append(v)
+                elif k in ('volume', 'pitch') and k not in e:
+                    e[k] = v
+            if e['waves']:
+                out.append(e)
+        return out
+
+    def voice(self, unit):
+        """A hero's voice lines grouped by response type, with subtitles."""
+        hero = self.hero(unit)
+        if not hero:
+            return None
+        path = hero['stats'].get('VoiceFile', '')
+        if not path:
+            return {'file': None, 'groups': []}
+        groups = {}
+        for e in self.soundscript_entries(path):
+            # names look like axe_axe_attack_03 / crystalmaiden_cm_kill_02: <hero>_<speaker>_<response>_<nn>
+            core = [p for p in e['name'].lower().split('_') if not p.isdigit()]
+            category = '_'.join(core[2:]) if len(core) > 2 else (core[-1] if core else 'misc')
+            e['subtitle'] = self.subtitle(e['name'])
+            groups.setdefault(category, []).append(e)
+        ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+        return {'file': path, 'groups': [{'category': c, 'lines': ls} for c, ls in ordered]}
+
+    def audio(self):
+        """Music, announcer, UI and ambient sound catalogues for the audio panel."""
+        if hasattr(self, '_audio'):
+            return self._audio
+        scripts = [p for p in self.list_prefix('scripts/', '.txt') if 'game_sounds' in p.rsplit('/', 1)[-1]]
+        pick = lambda pred: [e for p in scripts if pred(p) for e in self.soundscript_entries(p)]
+        announcer = pick(lambda p: 'announcer' in p and 'phonemes' not in p)
+        for e in announcer:
+            e['subtitle'] = self.subtitle(e['name'])
+        music = pick(lambda p: 'music' in p)
+        scripted = {w.lower().lstrip('*#@<>^)(}$!?&~`+%').replace('\\', '/') for e in music for w in e['waves']}
+        loose_music = [p[len('sound/'):] for p in self.list_prefix('sound/music/', '')
+                       if p.endswith(('.mp3', '.wav')) and p[len('sound/'):] not in scripted]
+        self._audio = {
+            'music': music,
+            'musicFiles': loose_music,
+            'announcer': announcer,
+            'ui': pick(lambda p: p.endswith('game_sounds_ui.txt')),
+            'ambientSounds': pick(lambda p: 'ambient' in p),
+            'soundscapes': self.soundscapes(),
+        }
+        return self._audio
+
+    def soundscapes(self):
+        """name -> {loops:[{wave, volume, pitch, origin}], randoms:[{waves, time, volume, pitch}], children}"""
+        out = {}
+        for path in self.list_prefix('scripts/', '.txt'):
+            if not path.rsplit('/', 1)[-1].startswith('soundscapes_') or path.endswith('manifest.txt'):
+                continue
+            for name, body in kv_pairs(self.text(path) or ''):
+                if not isinstance(body, list):
+                    continue
+                sc = {'file': path, 'loops': [], 'randoms': [], 'children': []}
+                for k, v in body:
+                    kl = k.lower()
+                    if not isinstance(v, list):
+                        continue
+                    d = {kk.lower(): vv for kk, vv in v if isinstance(vv, str)}
+                    if kl == 'playlooping' and d.get('wave'):
+                        sc['loops'].append({'wave': d['wave'], 'volume': d.get('volume', '1'), 'pitch': d.get('pitch', '100'),
+                                            'origin': d.get('origin')})
+                    elif kl == 'playrandom':
+                        waves = [vv for kk, vv in walk_pairs(v) if kk.lower() == 'wave']
+                        if waves:
+                            sc['randoms'].append({'waves': waves, 'time': d.get('time', '5,10'),
+                                                  'volume': d.get('volume', '1'), 'pitch': d.get('pitch', '100')})
+                    elif kl == 'playsoundscape' and d.get('name'):
+                        sc['children'].append({'name': d['name'], 'volume': d.get('volume', '1')})
+                out[name] = sc
+        return out
 
     def sounds(self):
         """Every soundscript entry in the build: name -> waves, volume, pitch, soundlevel."""
@@ -302,7 +458,7 @@ class Build:
                 'icon': a.get('AbilityTextureName') or name,
                 **{k: a[k] for k in ('AbilityBehavior', 'AbilityUnitDamageType', 'AbilityCastRange',
                                      'AbilityCooldown', 'AbilityManaCost', 'AbilityDamage',
-                                     'AbilityDuration', 'AbilityType') if k in a},
+                                     'AbilityDuration', 'AbilityType', 'AbilityCastPoint') if k in a},
                 'specials': specials,
             })
         short = unit.replace('npc_dota_hero_', '')
@@ -349,6 +505,22 @@ class Build:
             items.sort(key=lambda i: (not i['default'], i['slot'], i['name']))
         self._wearables = out
         return out
+
+
+def read_vccd(data):
+    """Compiled closed captions: header 'VCCD', version, numblocks, blocksize, directorysize,
+    dataoffset; then (crc32 uint, block int, offset ushort, length ushort) entries; UTF-16 text."""
+    out = {}
+    if data[:4] != b'VCCD':
+        return out
+    _ver, _nblocks, blocksize, dirsize, dataofs = struct.unpack_from('<iiiii', data, 4)
+    for i in range(dirsize):
+        crc, block, ofs, length = struct.unpack_from('<IiHH', data, 24 + i * 12)
+        start = dataofs + block * blocksize + ofs
+        text = data[start:start + length].decode('utf-16-le', 'replace').rstrip('\0')
+        # strip caption markup such as <clr:255,0,0> or <I>
+        out[crc] = re.sub(r'<[^>]*>', '', text).strip()
+    return out
 
 
 def kv_tokens(text):
@@ -437,7 +609,9 @@ class Handler(BaseHTTPRequestHandler):
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         try:
             if u.path == '/api/builds':
-                body = [{'key': k, 'label': c['label'], 'available': os.path.isdir(c['game'])}
+                body = [{'key': k, 'label': c['label'], 'available': os.path.isdir(c['game']), 'version': c.get('version'),
+                         'patchVersion': c.get('patchVersion'), 'compiled': c.get('compiled'),
+                         'dotaContent': content_stage(c['game']) if k < '2012' else None}
                         for k, c in BUILDS.items()]
                 return self.send(200, json.dumps(body).encode(), 'application/json')
             if u.path == '/api/models':
@@ -447,6 +621,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, json.dumps(get_build(q['build']).sounds()).encode(), 'application/json')
             if u.path == '/api/units':
                 return self.send(200, json.dumps(get_build(q['build']).units()).encode(), 'application/json')
+            if u.path == '/api/voice':
+                data = get_build(q['build']).voice(q['unit'])
+                return self.send(200 if data else 404, json.dumps(data).encode(), 'application/json')
+            if u.path == '/api/audio':
+                return self.send(200, json.dumps(get_build(q['build']).audio()).encode(), 'application/json')
             if u.path == '/api/hero':
                 data = get_build(q['build']).hero(q['unit'])
                 return self.send(200 if data else 404, json.dumps(data).encode(), 'application/json')
@@ -461,13 +640,16 @@ class Handler(BaseHTTPRequestHandler):
                 if data is None:
                     return self.send(404, b'not found', 'text/plain')
                 return self.send(200, data)
-            static = {'/': 'index.html', '/index.html': 'index.html', '/source.js': 'source.js', '/world.js': 'world.js'}
-            if u.path in static:
-                fn = os.path.join(HERE, static[u.path])
+            # the viewer's own files: html, js, css and the events/ manifests (never anything outside HERE)
+            rel = 'index.html' if u.path in ('/', '') else u.path.lstrip('/')
+            types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json'}
+            ext = os.path.splitext(rel)[1].lower()
+            fn = os.path.normpath(os.path.join(HERE, rel))
+            hidden = any(part.startswith('.') or part == '__pycache__' for part in rel.replace('\\', '/').split('/'))
+            if ext in types and not hidden and fn.startswith(HERE + os.sep) and os.path.isfile(fn):
                 with open(fn, 'rb') as f:
                     data = f.read()
-                ctype = 'text/html; charset=utf-8' if fn.endswith('.html') else 'text/javascript'
-                return self.send(200, data, ctype)
+                return self.send(200, data, types[ext])
             self.send(404, b'not found', 'text/plain')
         except KeyError as e:
             self.send(400, f'missing or unknown parameter {e}'.encode(), 'text/plain')

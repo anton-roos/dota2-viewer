@@ -13,7 +13,34 @@
   [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
     font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  #app { display: grid; grid-template-columns: 300px 1fr; height: 100%; }
+  #app { display: grid; grid-template-columns: 300px 1fr; height: 100%; position: relative; }
+  #audioDrawer { position: absolute; right: 0; top: 41px; bottom: 0; width: 380px; z-index: 20; background: var(--panel);
+    border-left: 1px solid var(--line); display: flex; flex-direction: column; box-shadow: -8px 0 24px rgba(0,0,0,.4); }
+  #audioDrawer .ad-head { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  #audioDrawer .ad-head select { flex: 1; width: auto; }
+  #audioDrawer .ad-tabs { display: flex; gap: 4px; padding: 8px 12px 4px; }
+  #audioDrawer .ad-tabs button { flex: 1; background: var(--chip); color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 4px; font: inherit; font-size: 12px; cursor: pointer; }
+  #audioDrawer .ad-tabs button.on { color: var(--text); border-color: var(--accent); }
+  #audioDrawer #adFilter { margin: 4px 12px; width: auto; }
+  #adList { overflow: auto; flex: 1; min-height: 0; padding: 0 6px; }
+  #adList .row { display: flex; gap: 8px; align-items: baseline; padding: 4px 6px; border-radius: 5px; cursor: pointer; }
+  #adList .row:hover { background: var(--chip); }
+  #adList .row.on { background: #2a1714; box-shadow: inset 3px 0 var(--accent); }
+  #adList .row .nm { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: var(--text); word-break: break-all; }
+  #adList .row .sub { font-size: 11.5px; color: var(--muted); }
+  #adList .grp { margin: 10px 6px 4px; font-size: 11px; color: var(--accent2); text-transform: uppercase; letter-spacing: .06em; }
+  #audioDrawer .hint, .hint { padding: 6px 12px; color: var(--muted); font-size: 11px; }
+  .np { margin: 8px 12px 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: rgba(15,18,22,.6); }
+  .np-title { font-size: 12px; margin-bottom: 6px; word-break: break-all; }
+  .np-bar { height: 4px; background: var(--chip); border-radius: 2px; overflow: hidden; }
+  .np-bar i { display: block; height: 100%; width: 0; background: var(--accent); }
+  .np-ctl { display: flex; gap: 10px; align-items: center; margin-top: 6px; font-size: 12px; }
+  .np-ctl label { display: flex; gap: 4px; align-items: center; text-transform: none; letter-spacing: 0; color: var(--text); font-size: 12px; }
+  .np-ctl input[type=range] { width: 90px; }
+  .view .stats .vo-title { margin: 8px 0 4px; font-weight: 600; cursor: pointer; }
+  .view .stats .vo-cat { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; cursor: pointer; }
+  .view .stats .vo-cat:hover .k, .view .stats .vo-line:hover { color: var(--text); }
+  .view .stats .vo-line { font-size: 11px; color: var(--muted); padding: 1px 0 1px 10px; cursor: pointer; }
   aside { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
   aside header { padding: 14px 14px 10px; border-bottom: 1px solid var(--line); }
   h1 { font-size: 15px; margin: 0 0 2px; letter-spacing: .02em; }
@@ -38,12 +65,14 @@
   .toolbar { display: flex; gap: 14px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line);
     background: var(--panel); flex-wrap: wrap; }
   .toolbar label { display: flex; gap: 6px; align-items: center; text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--text); }
-  #views { display: grid; grid-template-columns: repeat(var(--n, 2), 1fr); min-height: 0; }
-  .view { position: relative; border-right: 1px solid var(--line); min-width: 0; min-height: 0; }
+  #views { display: grid; grid-template-columns: repeat(var(--n, 2), 1fr); min-height: 0; position: relative; }
+  #views.has-hud .view .info { bottom: 132px; max-height: 30%; }
+  #views.has-hud .view .worldstatus { bottom: 132px; }
+  .view { position: relative; border-right: 1px solid var(--line); min-width: 0; min-height: 0; overflow: hidden; }
   .view:last-child { border-right: 0; }
   .view canvas { display: block; width: 100%; height: 100%; }
   .view .head { position: absolute; left: 10px; top: 10px; right: 10px; display: flex; gap: 8px; align-items: center; pointer-events: none; }
-  .view .head select { width: auto; pointer-events: auto; background: rgba(22,27,33,.9); }
+  .view .head select { width: auto; min-width: 0; flex: 0 1 auto; pointer-events: auto; background: rgba(22,27,33,.9); }
   .view .info { position: absolute; left: 10px; bottom: 10px; right: 10px; background: rgba(15,18,22,.82);
     border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; max-height: 45%; overflow: auto; }
   .view .info b { color: var(--accent2); font-weight: 600; }
@@ -59,12 +88,66 @@
   .view .timeline .head2 { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--accent); margin-left: -1px; }
   .view .timeline i { position: absolute; top: 2px; bottom: 2px; width: 3px; margin-left: -1px; background: var(--accent2); border-radius: 1px; }
   .view .timeline i.snd { background: #5fb8ff; cursor: pointer; width: 4px; }
+  .view .timeline i.fx { background: #ff8a3c; cursor: pointer; width: 4px; }
   .view .timeline i.hit { animation: hit .5s ease-out; }
   @keyframes hit { from { transform: scaleY(2.2); box-shadow: 0 0 8px #5fb8ff; } to { transform: none; box-shadow: none; } }
   .view .head .mute { pointer-events: auto; padding: 4px 8px; }
   .view .head select.worldsel { max-width: 150px; }
+  .view .head select.build { max-width: 330px; }
+  .view .head .step { pointer-events: auto; padding: 4px 7px; font-size: 11px; }
+  .view .head .step:disabled { opacity: .35; }
   .view .worldstatus { position: absolute; right: 10px; bottom: 10px; background: rgba(15,18,22,.85); border: 1px solid var(--line);
     border-radius: 6px; padding: 3px 8px; font-size: 11px; color: var(--muted); max-width: 60%; z-index: 2; }
+  /* whole-map mode */
+  .view .mapmode { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .view .maplabels { position: absolute; inset: 0; }
+  .view .mlabel { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 4px; pointer-events: auto; cursor: pointer;
+    margin: -9px 0 0 -8px; font-size: 11px; white-space: nowrap; color: #f2ead6; text-shadow: 0 1px 2px #000, 0 0 4px #000; will-change: transform; }
+  .view .mlabel i { font-style: normal; font-size: 13px; width: 16px; text-align: center; }
+  .view .mlabel span { display: none; background: rgba(12,14,17,.78); border: 1px solid rgba(194,156,83,.45); border-radius: 4px; padding: 0 5px; }
+  .view .mlabel.named span, .view .mlabel:hover span { display: inline; }
+  .view .mlabel:hover { z-index: 5; }
+  .view .mlabel.t-radiant i { color: #7cf07c; } .view .mlabel.t-dire i { color: #ff6a52; }
+  .view .mlabel.k-rune i { color: #7ad0ff; } .view .mlabel.k-roshan i { color: #ffcf6a; font-size: 16px; }
+  .view .mlabel.k-shop i { color: #ffd76a; } .view .mlabel.k-camp i { color: #d8cfb8; font-size: 18px; }
+  .view .mlabel.k-camp.s2 i, .view .mlabel.k-camp.s3 i { color: #ffb070; }
+  .view .mlabel.k-fort i { font-size: 18px; }
+  .view .minimap { position: absolute; left: 10px; bottom: 10px; width: min(240px, 34%); aspect-ratio: 1; pointer-events: auto;
+    border: 2px solid #483920; outline: 1px solid #c29c53; border-radius: 3px; background: #050607; box-shadow: 0 4px 14px rgba(0,0,0,.6); }
+  .view .minimap canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+  .view .minimap .mmcap { position: absolute; left: 0; right: 0; top: -17px; font-size: 10px; color: #c29c53; text-shadow: 0 1px 2px #000; }
+  .view:has(.mapmode) .info, .view:has(.mapmode) .stats, .view:has(.mapmode) .wear,
+  .view:has(.battlehud) .info, .view:has(.battlehud) .stats, .view:has(.battlehud) .wear { display: none !important; }
+  .view .maplegend { position: absolute; right: 10px; top: 68px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: flex-end;
+    max-width: 60%; pointer-events: auto; background: rgba(15,18,22,.85); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 11px; }
+  .view .maplegend label { text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--text); display: flex; gap: 4px; align-items: center; }
+  .view .maplegend .btn { padding: 2px 7px; font-size: 11px; }
+  .view .maplegend .mhelp { flex-basis: 100%; text-align: right; color: var(--muted); font-size: 10px; }
+  #views.has-hud .view .minimap { bottom: 132px; }
+  .view .battlehud { position: absolute; left: 50%; top: 68px; transform: translateX(-50%); display: flex; gap: 14px; align-items: center;
+    background: linear-gradient(#1d1c19, #121210); border: 1px solid #483920; outline: 1px solid rgba(194,156,83,.5); border-radius: 4px;
+    padding: 3px 12px; font-size: 11px; white-space: nowrap; pointer-events: none; z-index: 3; box-shadow: 0 3px 10px rgba(0,0,0,.5); }
+  .view .battlehud .r { color: #8ff08f; } .view .battlehud .d { color: #ff8a70; } .view .battlehud .c { color: #e8dcc0; font-variant-numeric: tabular-nums; }
+  .view .battlehud b { font-size: 13px; }
+  .view .battlehud { flex-direction: column; gap: 2px; pointer-events: auto; }
+  .view .battlehud .row { display: flex; gap: 14px; align-items: center; }
+  .view .battlehud .row.hero { color: #e8dcc0; }
+  .view .battlehud .row.hero select { font-size: 11px; padding: 1px 4px; width: auto; background: #1d1c19; }
+  .view .battlehud .row.hero label { text-transform: none; letter-spacing: 0; font-size: 11px; color: #c29c53; display: flex; gap: 5px; align-items: center; }
+  .view .battlehud .lh { color: #ffd76a; } .view .battlehud .dn { color: #9fd0ff; } .view .battlehud .g { color: #ffcf40; }
+  .view .battlehud .dead { color: #ff6a52; }
+  .view .battlehud .row.note { color: #8a8170; font-size: 10px; cursor: help; }
+  .view .floattext { position: absolute; left: 0; top: 0; pointer-events: none; font: 700 16px/1 system-ui, sans-serif; color: #ffd24a;
+    text-shadow: 0 1px 2px #000, 0 0 6px #000; z-index: 4; white-space: nowrap; }
+  .view .floattext.deny { color: #9fd0ff; font-size: 22px; }
+  .view .floattext.move { color: #5eff6a; font-size: 14px; }
+  .view .floattext.order { color: #ff8f6a; font-size: 12px; }
+  .view .floattext.cull { color: #ff3a2a; font-size: 20px; letter-spacing: .08em; }
+  .view .floattext.stun { color: #fff6a0; font-size: 18px; }
+  .view.targeting canvas { cursor: crosshair; }
+  .view:has(.battlehud) .toasts { top: 100px !important; }
+  .view:has(.battlehud) .maplegend { top: 98px; }
+  .view:has(.battlehud):has(.maplegend) .toasts { top: 160px !important; }
   .view .blendctl { position: absolute; left: 10px; top: 66px; display: flex; gap: 8px; align-items: center;
     background: rgba(15,18,22,.85); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font-size: 12px; }
   .view .blendctl .bn { color: var(--accent2); }
@@ -112,6 +195,7 @@
     #views { grid-template-columns: 1fr; }
   }
 </style>
+<link rel="stylesheet" href="hud.css?v=2">
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -141,6 +225,29 @@
     <div id="list"></div>
     <div id="count"></div>
   </aside>
+  <aside id="audioDrawer" hidden>
+    <div class="ad-head">
+      <b>♫ Audio</b>
+      <select id="adBuild"></select>
+      <button id="adClose" class="btn" title="Close">✕</button>
+    </div>
+    <div id="nowPlaying" class="np" hidden>
+      <div class="np-title"></div>
+      <div class="np-bar"><i></i></div>
+      <div class="np-ctl">
+        <button id="npStop" class="btn">■ stop</button>
+        <label><input type="checkbox" id="npLoop" checked> loop</label>
+        <label>music <input type="range" id="npVol" min="0" max="1" step="0.05" value="0.6"></label>
+      </div>
+    </div>
+    <div class="ad-tabs" id="adTabs">
+      <button data-t="music" class="on">Music</button><button data-t="announcer">Announcer</button>
+      <button data-t="ambient">Ambient</button><button data-t="ui">UI</button>
+    </div>
+    <input id="adFilter" type="search" placeholder="Filter…">
+    <div id="adList"></div>
+    <div id="adCount" class="hint"></div>
+  </aside>
   <main>
     <div class="toolbar">
       <label><input type="checkbox" id="optTex" checked> textures</label>
@@ -154,10 +261,19 @@
       <label><input type="checkbox" id="optSyncSeq" checked> sync animations</label>
       <label><input type="checkbox" id="optLoopAll" checked> repeat one-shots</label>
       <span class="sep"></span>
+      <button id="optMap" class="btn" title="Whole map in every view: fly over the map, landmarks, lanes and a minimap (click again to leave)">🗺 map</button>
+      <label title="Per-vertex colour tints stored with each terrain layer in the map (July–Sept 2011 maps carry a blue-purple tint on layer 4)"><input type="checkbox" id="optTints" checked> terrain tints</label>
+      <label title="Time of day for world mode (map lighting zones, fog, day/night soundscapes)">time
+        <select id="optTod" style="width:auto"><option value="day">day</option><option value="dusk">dusk</option><option value="night">night</option><option value="dawn">dawn</option></select></label>
       <label><input type="checkbox" id="optStats" checked> stats</label>
+      <label title="Panorama-style hero HUD for the view you last clicked; Q/W/E/R cast abilities"><input type="checkbox" id="optHud" checked> HUD</label>
       <label title="Hero level used for the stats panels">level <input id="optLevel" type="range" min="1" max="25" value="1" style="width:90px"> <b id="optLevelVal">1</b></label>
       <span class="sep"></span>
       <button id="optSound" class="btn" title="Browsers only allow audio after a click">🔇 sound off</button>
+      <button id="optAudio" class="btn" title="Music, announcer, ambient soundscapes and UI sounds">♫ audio</button>
+      <label title="Heroes say a fitting voice line when an animation starts"><input type="checkbox" id="optVoice" checked> voice reactions</label>
+      <label title="Play the build's map music in world mode (2011: dota.mp3, 6.84: layered laning theme)"><input type="checkbox" id="optWorldMusic" checked> world music</label>
+      <label title="World mode: Roshan in his pit and a creep wave marching with you when walking a lane"><input type="checkbox" id="optActors" checked> creeps</label>
       <input id="optVol" type="range" min="0" max="1" step="0.05" value="0.7" title="Volume" style="width:80px">
       <label>views <select id="optViews" style="width:auto"><option>1</option><option selected>2</option><option>3</option></select></label>
     </div>
@@ -169,7 +285,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildModel, materialPaths, parseVMT, parseVTF, decodeSequence, texturePath } from './source.js?v=9';
-import { loadWorld } from './world.js?v=3';
+import { loadWorld, trimWorlds, setTerrainTints } from './world.js?v=18';
+import { AnimationEventManager } from './AnimationEventManager.js?v=1';
+import { ParticleSystem, presetForEffect } from './particles.js?v=2';
+import { Hud } from './hud.js?v=3';
+import { MapMode } from './mapview.js?v=4';
+import { Battle } from './battle.js?v=9';
 
 const $ = (s) => document.querySelector(s);
 const api = (p) => fetch(p).then((r) => (r.ok ? r : Promise.reject(new Error(r.status + ' ' + p))));
@@ -177,6 +298,9 @@ const file = (build, path) => api(`/api/file?build=${build}&path=${encodeURIComp
 const tryFile = (build, path) => file(build, path).catch(() => null);
 
 let builds = [];
+// Dota 2's own identifiers for a build, shown as a tooltip on the build pickers
+const buildTitle = (b) => [`Dota 2 version ${b.version || '?'}`, b.dotaContent ? `items ported up to DotA ${b.dotaContent}` : '',
+  b.compiled ? `engine compiled ${b.compiled}` : '', b.patchVersion ? `steam.inf PatchVersion ${b.patchVersion}` : ''].filter(Boolean).join(' · ');
 const lists = {};      // build -> [model paths]
 let current = null;    // selected model path
 
@@ -185,9 +309,14 @@ class View {
   constructor(idx, buildKey) {
     this.el = document.createElement('div');
     this.el.className = 'view';
-    this.el.innerHTML = `<div class="head"><select class="build"></select><select class="seq" hidden></select>`
+    this.el.innerHTML = `<div class="head"><button class="btn step" data-d="-1" title="Previous build">◀</button><select class="build"></select>`
+      + `<button class="btn step" data-d="1" title="Next build">▶</button><select class="seq" hidden></select>`
       + `<select class="worldsel" title="Put the model in this build's map"><option value="">no world</option>`
-      + `<option value="radiant">Radiant spawn</option><option value="dire">Dire spawn</option><option value="mid">Mid lane, river</option></select>`
+      + `<option value="map">🗺 Whole map — fly over</option><option value="battle">⚔ Creep battle at mid</option><option value="radiant">Radiant spawn</option><option value="dire">Dire spawn</option><option value="mid">Mid lane, river</option><option value="roshan">Roshan's pit</option>`
+      + `<optgroup label="walk a lane (hero's move speed)"><option value="walk:mid_good">Walk mid — Radiant → Dire</option>`
+      + `<option value="walk:mid_bad">Walk mid — Dire → Radiant</option><option value="walk:top_good">Walk top — Radiant</option>`
+      + `<option value="walk:top_bad">Walk top — Dire</option><option value="walk:bot_good">Walk bot — Radiant</option>`
+      + `<option value="walk:bot_bad">Walk bot — Dire</option></optgroup></select>`
       + `<button class="btn mute" title="Mute this view">🔊</button></div>`
       + `<div class="worldstatus" hidden></div>`
       + `<div class="msg">Pick a model on the left</div><div class="info" hidden></div><div class="timeline" hidden><div></div></div>`
@@ -203,8 +332,15 @@ class View {
     };
     this.toasts = this.el.querySelector('.toasts');
     this.sel = this.el.querySelector('select.build');
-    for (const b of builds) this.sel.append(new Option(b.label, b.key, false, b.key === buildKey));
-    this.sel.onchange = () => { if (current) this.load(current); if (this.worldMode) this.setWorld(this.worldMode); };
+    for (const b of builds) { const o = new Option(b.label, b.key, false, b.key === buildKey); o.title = buildTitle(b); this.sel.append(o); }
+    this.sel.onchange = () => {
+      if (current) this.load(current);
+      if (this.worldMode) this.setWorld(this.worldMode);
+      const [prev, next] = this.el.querySelectorAll('.step');
+      prev.disabled = this.sel.selectedIndex <= 0;
+      next.disabled = this.sel.selectedIndex >= this.sel.options.length - 1;
+    };
+    for (const b of this.el.querySelectorAll('.step')) b.onclick = () => this.stepBuild(+b.dataset.d);
     this.worldSel = this.el.querySelector('select.worldsel');
     this.worldSel.onchange = () => { this.setWorld(this.worldSel.value); syncWorld(this); };
     this.worldStatus = this.el.querySelector('.worldstatus');
@@ -227,18 +363,44 @@ class View {
     this.controls.enableDamping = true;
     this.controls.addEventListener('change', () => syncFrom(this));
 
-    this.scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x302822, 1.6));
-    const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(200, 400, 250); this.scene.add(key);
-    const rim = new THREE.DirectionalLight(0x8fb4ff, 1.0); rim.position.set(-300, 200, -250); this.scene.add(rim);
+    this.hemi = new THREE.HemisphereLight(0xdfe8ff, 0x302822, 1.6); this.scene.add(this.hemi);
+    this.key = new THREE.DirectionalLight(0xffffff, 2.2); this.key.position.set(200, 400, 250); this.scene.add(this.key);
+    this.scene.add(this.key.target);
+    this.rim = new THREE.DirectionalLight(0x8fb4ff, 1.0); this.rim.position.set(-300, 200, -250); this.scene.add(this.rim);
+    this.pointLights = new THREE.Group(); this.scene.add(this.pointLights);
     this.grid = new THREE.GridHelper(400, 20, 0x2c343d, 0x1c2229); this.scene.add(this.grid);
     this.spin = new THREE.Group(); // turntable, around world Y; also where the hero stands in a world
     this.root = new THREE.Group(); // per-model up-axis correction
     this.spin.add(this.root);
     this.scene.add(this.spin);
     this.texCache = new Map();
+    this.particles = new ParticleSystem(this.scene);
+    this.events = new AnimationEventManager({
+      onSound: (e) => this.onEventSound(e), onParticle: (e) => this.onEventParticle(e), onFire: (e) => this.onEventFire(e),
+    });
+    this.sockets = {};
+    // the HUD follows whichever view you last interacted with
+    this.el.addEventListener('pointerdown', () => { if (hud.view !== this) hud.bind(this); }, true);
+  }
+
+  // drop textures of other builds from this view's cache (they are re-decoded if you switch back)
+  disposeOtherBuildTextures() {
+    for (const [key, p] of this.texCache) {
+      if (key.startsWith(this.build + '|')) continue;
+      p.then((t) => t?.dispose()).catch(() => {});
+      this.texCache.delete(key);
+    }
   }
 
   get build() { return this.sel.value; }
+
+  // step to the previous/next build in date order, keeping model, animation and world spot
+  stepBuild(d) {
+    const i = this.sel.selectedIndex + d;
+    if (i < 0 || i >= this.sel.options.length) return;
+    this.sel.selectedIndex = i;
+    this.sel.onchange();
+  }
 
   get gain() {
     if (!audio.ctx) return null;
@@ -260,17 +422,62 @@ class View {
     setTimeout(() => d.remove(), 2600);
   }
 
-  fireEvents(prev, cur) {
-    if (!audio.enabled || this.muted || !this.anim) return;
-    for (const e of this.anim.events) {
-      if (!e.sound) continue;
-      const hit = cur >= prev ? e.cycle > prev && e.cycle <= cur : e.cycle > prev || e.cycle <= cur;
-      if (hit) {
-        audio.play(this.build, e.sound, this);
-        const tick = this.timeline.querySelector(`i[data-i="${this.anim.events.indexOf(e)}"]`);
-        if (tick) { tick.classList.remove('hit'); void tick.offsetWidth; tick.classList.add('hit'); }
-      }
+  // ---------------------------------------------------------- keyframe events (sound + particles)
+  // AnimationEventManager fires the clip's events once per trigger window; these are its handlers.
+  onEventSound(e) {
+    if (!audio.enabled || this.muted) return;
+    if (e.sound) audio.play(this.build, e.sound, this);
+    else if (e.path) audio.playEntry(this.build, { name: e.path, waves: [e.path.replace(/^sound\//, '')], volume: e.volume }, { view: this, label: e.path });
+    else if (e.url) playUrl(e.url, this);
+  }
+
+  onEventParticle(e) {
+    const preset = e.preset || presetForEffect(e.effect);
+    this.particles.spawn(preset, this.resolveSocket(e.socket), { follow: e.follow, fallback: this.resolveSocket('attach_hitloc') || this.bones?.[0] });
+  }
+
+  onEventFire(e) {
+    const tick = this.timeline.querySelector(`i[data-i="${this.events.events.indexOf(e)}"]`);
+    if (tick) { tick.classList.remove('hit'); void tick.offsetWidth; tick.classList.add('hit'); }
+  }
+
+  // MDL attachment by name; common aliases between eras; then a bone whose name fits; else null
+  resolveSocket(name) {
+    if (!name || !this.sockets) return null;
+    const s = this.sockets, n = name.toLowerCase();
+    if (s[n]) return s[n];
+    const aliases = {
+      attach_weapon: ['attach_attack1', 'attach_helix', 'blade_attachment', 'attach_hook', 'attach_weapon_l'],
+      attach_attack1: ['attach_weapon', 'attach_helix', 'blade_attachment'], attach_helix: ['attach_attack1', 'attach_weapon'],
+      blade_attachment: ['attach_attack1', 'attach_weapon'], attach_hitloc: ['attach_portrait'],
+    };
+    for (const a of aliases[n] || []) if (s[a]) return s[a];
+    // January models lack sockets their own events name (Axe's attach_helix): fall back to a weapon-ish bone
+    const boneHint = /helix|weapon|attack|blade|hook/.test(n) ? /axe|weapon|sword|blade|hook|wrist_r|hand_r/ : /spine|pelvis|root/;
+    return this.bones?.find((b) => boneHint.test(b.name.toLowerCase())) || null;
+  }
+
+  // HUD: play the cast animation for ability slot i, then return to the animation that was playing
+  castAbility(i, a) {
+    if (!this.model) return;
+    if (this.battle?.hero) {
+      const r = this.battle.cast(a);
+      if (r === 'target' || r === 'point') this.startTargeting(a, r);
+      return;
     }
+    const seqs = this.model.mdl.seqs;
+    const tokens = a.name.split('_').slice(1).filter((t) => t.length > 3);
+    let k = seqs.findIndex((s) => s.activity === `ACT_DOTA_CAST_ABILITY_${i + 1}`);
+    if (k < 0) k = seqs.findIndex((s) => tokens.some((t) => s.name.toLowerCase().includes(t)));
+    if (k < 0) k = seqs.findIndex((s) => /cast|attack/i.test(s.name + s.activity) && !(s.flags & 0x4));
+    if (k < 0) { this.toast(`no cast animation for ${a.title}`, true); return; }
+    // remember what every view was looping, so synced views also return after the one-shot
+    const backs = new Map(views.map((v) => [v, v.anim?.looping ? v.anim.index : null]));
+    this.seqSel.value = k;
+    this.playSequence(k);
+    syncSequence(this);
+    for (const v of views) if (v.anim && !v.anim.looping && backs.get(v) != null) v.returnTo = backs.get(v);
+    this.toast(`${a.title} — ${seqs[k].name}`);
   }
 
   resize() {
@@ -282,13 +489,14 @@ class View {
 
   clear() {
     this.model = null; this.skeleton = null; this.anim = null;
+    this.events.dispose(); this.particles.clear(); this.sockets = {}; this.returnTo = null;
     this.statsPanel?.remove(); this.statsPanel = null; this.hero = null;
     if (this.blendCtl) this.blendCtl.hidden = true;
     this.wearPanel?.remove(); this.wearPanel = null; this.wear = new Map();
     this.seqSel.hidden = true; this.timeline.hidden = true;
     for (const c of [...this.root.children]) {
       this.root.remove(c);
-      c.traverse((o) => { o.geometry?.dispose(); if (o.material) [].concat(o.material).forEach((m) => m.dispose()); });
+      disposeTree(c);
     }
   }
 
@@ -339,6 +547,9 @@ class View {
     ]);
     if (token !== this.token) return;
     this.clear();
+    // only now that the previous model is gone can its build's textures be freed — disposing them
+    // while it is still drawn makes the renderer upload them again, leaking one copy per switch
+    this.disposeOtherBuildTextures();
     if (!mdlB) { this.msg.textContent = `Not in this build:\n${path}`; return; }
     if (!vvdB || !vtxB) { this.msg.textContent = 'MDL found but its vertex files are missing'; return; }
 
@@ -363,6 +574,19 @@ class View {
     });
     this.bones = bones;
     this.skeleton = new THREE.Skeleton(bones, inverses);
+    // attachments (sockets) ride on their bones, so particles mounted on them follow the animation
+    this.sockets = {};
+    for (const at of model.mdl.attachments || []) {
+      const bone = bones[at.bone];
+      if (!bone) continue;
+      const o = new THREE.Object3D();
+      o.name = at.name;
+      const m = at.local;
+      o.matrix.set(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], 0, 0, 0, 1);
+      o.matrixAutoUpdate = false;
+      bone.add(o);
+      this.sockets[at.name.toLowerCase()] = o;
+    }
     this.model = model;
     this.restPose();
 
@@ -445,12 +669,20 @@ class View {
     const h = await api(`/api/hero?build=${this.build}&unit=${this.unit.unit}`).then((r) => r.json()).catch(() => null);
     if (token !== this.token || !h) return;
     this.hero = h;
+    // a battle in progress picks up the newly loaded hero (or the new model just watches if it isn't one)
+    if (this.battle) {
+      const team = this.battleHud?.querySelector('select.team');
+      const want = h.isHero ? team?.value || 'radiant' : '';
+      if (team) team.value = want;
+      setTimeout(() => this.battle && this.joinBattle(want), 300); // after the model's sequences are in place
+    }
     const panel = document.createElement('div');
     panel.className = 'stats';
     panel.hidden = !$('#optStats').checked;
     this.el.append(panel);
     this.statsPanel = panel;
     this.renderStats();
+    if (!hud.view || hud.view === this) hud.bind(this); // version switches refresh the HUD with this patch's data
     for (const img of panel.querySelectorAll('img[data-img]')) {
       uiImage(this.build, img.dataset.img.split('|')).then((url) => { if (url) img.src = url; else img.classList.add('noicon'); });
     }
@@ -513,8 +745,78 @@ class View {
           <img data-img="resource/flash3/images/spellicons/${esc(a.icon)}.png|materials/vgui/hud/spellicons/${esc(a.icon)}.vtf|materials/vgui/hud/spellicons/${esc(a.icon)}.vmt" alt="">
           <div><div class="at">${esc(a.title)}</div><div class="k">${esc(meta)}</div>
           ${a.specials.map((x) => `<div class="sp"><span class="k">${esc((x.label || x.key).replace(/^%/, '').replace(/:$/, ''))}</span> ${esc(x.value)}</div>`).join('')}</div></div>`;
-      }).join('')}`;
+      }).join('')}
+      ${h.isHero ? '<div class="vo"></div>' : ''}`;
+    this.renderVoice(panel.querySelector('.vo'));
     refreshStatDiffs();
+  }
+
+  // ---------------------------------------------------------- voice lines
+  loadVoice() {
+    if (!this.unit?.unit.startsWith('npc_dota_hero_')) return Promise.resolve(null);
+    const key = this.build + '|' + this.unit.unit;
+    if (this.voiceKey !== key) {
+      this.voiceKey = key;
+      this.voicePromise = api(`/api/voice?build=${this.build}&unit=${this.unit.unit}`).then((r) => r.json()).catch(() => null);
+      this.voicePromise.then((v) => { if (this.voiceKey === key) { this.voiceData = v; this.renderVoice(this.statsPanel?.querySelector('.vo')); } });
+      this.voiceData = null;
+    }
+    return this.voicePromise;
+  }
+
+  renderVoice(el) {
+    if (!el) return;
+    const v = this.voiceKey === `${this.build}|${this.unit?.unit}` ? this.voiceData : null;
+    if (!v) { el.innerHTML = '<div class="vo-title k">🗨 Voice lines — loading…</div>'; this.loadVoice(); return; }
+    const total = v.groups.reduce((s, g) => s + g.lines.length, 0);
+    if (!total) { el.innerHTML = '<div class="vo-title k">🗨 no voice lines in this build</div>'; return; }
+    this.voOpen ||= new Set();
+    const esc = escHtml;
+    el.innerHTML = `<div class="vo-title">🗨 Voice lines <span class="k">· ${total} in ${v.groups.length} groups · click a group to hear one</span></div>`
+      + v.groups.map((g, gi) => `<div class="vo-cat" data-g="${gi}"><span>${esc(g.category.replace(/_/g, ' '))}</span>`
+        + `<span class="k">${g.lines.length} ${this.voOpen.has(g.category) ? '▾' : '▸'}</span></div>`
+        + (this.voOpen.has(g.category) ? g.lines.map((l, li) => `<div class="vo-line" data-g="${gi}" data-l="${li}">▶ ${esc(l.subtitle || l.name)}</div>`).join('') : '')).join('');
+    el.onclick = (e) => {
+      const line = e.target.closest('.vo-line'), cat = e.target.closest('.vo-cat');
+      if (line) return this.say(v.groups[+line.dataset.g].lines[+line.dataset.l]);
+      if (!cat) return;
+      const g = v.groups[+cat.dataset.g];
+      if (e.target.closest('.k')) { // the count/arrow toggles the list
+        this.voOpen.has(g.category) ? this.voOpen.delete(g.category) : this.voOpen.add(g.category);
+        return this.renderVoice(el);
+      }
+      this.say(g.lines[Math.floor(Math.random() * g.lines.length)]);
+    };
+  }
+
+  async say(line) {
+    if (!line) return;
+    await unlockAudio();
+    const who = this.hero?.name || '';
+    const text = (line.subtitle || '').replace(/^[^:]{1,30}:\s*/, ''); // subtitles start with "axe: "
+    audio.playEntry(this.build, line, { view: this, subtitle: text ? `${who}: ${text}` : '', label: line.name });
+  }
+
+  // A fitting voice line when an animation starts (spawn, attack, death, casting…), like in game.
+  async voiceReact(seq) {
+    if (!$('#optVoice').checked || !audio.enabled || !seq) return;
+    const v = await this.loadVoice();
+    if (!v?.groups?.length) return;
+    const s = `${seq.activity} ${seq.name}`.toLowerCase();
+    const rules = [
+      [/spawn|loadout/, /^spawn$/, 1], [/die|death/, /^death$|^die$/, 1], [/victory|win/, /^win$|victory|^laugh$/, 1],
+      [/cast_ability_(\d)|ability|culling|helix|berserk|hunger/, /^ability|^cast|^anger/, 0.8],
+      [/attack/, /^attack$/, 0.45], [/run|walk/, /^move$/, 0.25], [/stun|disabled|flail/, /^pain$|^stun/, 0.6],
+      [/taunt/, /taunt|^laugh$|^thanks$/, 1], [/idle/, /^laugh$|^thanks$|^regen/, 0.08],
+    ];
+    for (const [act, cat, chance] of rules) {
+      if (!act.test(s)) continue;
+      if (Math.random() > chance) return;
+      const groups = v.groups.filter((g) => cat.test(g.category));
+      const lines = groups.flatMap((g) => g.lines);
+      if (lines.length) this.say(lines[Math.floor(Math.random() * lines.length)]);
+      return;
+    }
   }
 
   // re-render numbers for a new level without re-decoding the icons
@@ -674,13 +976,24 @@ class View {
     this.worldMode = mode || '';
     this.worldSel.value = this.worldMode;
     const token = (this.worldToken = Symbol());
+    this.stopBattle();
+    if (this.mapMode) { this.mapMode.leave(); this.mapMode = null; }
     if (this.worldObj) { this.scene.remove(this.worldObj); this.worldObj = null; }
+    this.ambience?.stop();
+    this.world = null;
+    this.walk = null;
+    this.clearActors();
+    // free maps no view shows any more (keeps the 3 most recent for quick switching back)
+    trimWorlds(new Set(views.filter((v) => v.world).map((v) => v.world.build).concat(mode ? [this.build] : [])));
+    trimActorTemplates();
+    if (!mode && audio.music?.world && !views.some((v) => v !== this && v.world)) audio.stopMusic();
     if (!mode) {
       this.spin.position.set(0, 0, 0);
       this.spin.rotation.y = 0;
       this.grid.visible = true;
       this.scene.fog = null;
       this.scene.background.set(0x0f1216);
+      this.applyLighting();
       this.worldStatus.hidden = true;
       this.framed = false;
       if (this.model) this.frameOnHero(false);
@@ -702,19 +1015,505 @@ class View {
     this.grid.visible = false;
     this.scene.background.set(0x8fa7b8);
     this.scene.fog = new THREE.Fog(0x8fa7b8, 4000, 16000);
-    const spot = world.spots[mode] || world.spots.radiant;
+    let spot = world.spots[mode === 'map' || mode === 'battle' ? 'mid' : mode] || world.spots.radiant, route = null;
+    if (mode === 'battle') {
+      // watch from the riverbank beside the mid lane, facing the clash
+      const t1 = (team) => world.markers.find((k) => k.kind === 'tower' && k.team === team && k.tier === 1 && /_mid$/.test(k.name || ''));
+      const tr = t1('radiant'), td = t1('dire');
+      const m = tr && td ? [(tr.pos[0] + td.pos[0]) / 2, (tr.pos[1] + td.pos[1]) / 2, world.spots.mid.pos[2]] : world.spots.mid.pos;
+      const d = world.spots.dire.pos, r = world.spots.radiant.pos;
+      const lane = Math.atan2(d[1] - r[1], d[0] - r[0]), x = m[0] - Math.sin(lane) * 520, y = m[1] + Math.cos(lane) * 520;
+      spot = { pos: [x, y, world.groundZ(x, y, m[2])], yaw: THREE.MathUtils.radToDeg(lane) - 90, label: 'Creep battle at mid',
+        center: [m[0], m[1], world.groundZ(m[0], m[1], m[2])] };
+    }
+    if (mode.startsWith('walk:')) {
+      const key = mode.slice(5), pts = world.lanes[key];
+      if (!pts) { status(`this map has no ${key.replace('_', ' ')} lane waypoints`); return; }
+      route = world.sampleRoute(pts);
+      const [a, b] = [route[0], route[Math.min(4, route.length - 1)]];
+      spot = { pos: [...a], yaw: THREE.MathUtils.radToDeg(Math.atan2(b[1] - a[1], b[0] - a[0])),
+        label: `Walking ${key.split('_')[0]} lane (${key.endsWith('good') ? 'Radiant' : 'Dire'})` };
+    }
     this.spin.position.set(spot.pos[0], spot.pos[2], -spot.pos[1]);
     this.spin.rotation.y = THREE.MathUtils.degToRad(spot.yaw);
     this.spotLabel = spot.label;
+    this.world = world;
+    this.spot = spot;
     status(`${spot.label} · ${spot.pos.map(Math.round).join(', ')} · ${world.stats.trees} trees, ${world.stats.props} props`);
-    this.frameOnHero(true);
+    if (mode === 'map') {
+      this.mapMode = new MapMode(this, world, { onWalk: (p) => this.walkTo(p), onBattle: () => this.toggleBattle(['top', 'mid', 'bot']) });
+      try { this.mapMode.snapshot(); } catch (e) { console.warn('minimap snapshot failed', e); }
+      this.mapStatus = `whole map · ${world.markers.filter((m) => m.kind === 'tower').length} towers, ${world.markers.filter((m) => m.kind === 'camp').length} neutral camps, ${world.stats.trees} trees`;
+      status(this.mapStatus);
+    } else this.frameOnHero(true);
+    this.applyLighting();
+    this.startAmbience();
+    startWorldMusic();
+    if (route) this.startWalk(route);
+    this.spawnActors(world, mode, token);
+    if (mode === 'battle') {
+      // a wider shot of the river than the usual over-the-shoulder view
+      const c = this.spot.center || world.spots.mid.pos;
+      const t = new THREE.Vector3(c[0], c[2] + 60, -c[1]);
+      this.controls.target.copy(t);
+      this.camera.position.copy(t).add(this.camera.position.clone().sub(this.spin.position).setLength(2300).setY(1500));
+      this.controls.update();
+      if ($('#optActors').checked) this.startBattle(['mid']);
+      else this.toast('creeps are switched off in the toolbar — tick "creeps" and pick the battle again', true);
+    }
+    if (mode !== 'mid' && $('#optVoice').checked && audio.enabled) this.voiceReact({ activity: 'ACT_DOTA_SPAWN', name: 'spawn' });
     // models stream in; swap in a complete copy once they have all arrived
     world.ready.then(() => {
       if (token !== this.worldToken) return;
       container.clear();
       container.add(world.group.clone());
+      if (this.mapMode) { try { this.mapMode.snapshot(true); } catch (e) { console.warn('minimap snapshot failed', e); } setTimeout(() => token === this.worldToken && status(this.mapStatus + ` · ${world.stats.models} models`)); return; } // now with trees and buildings
       status(`${spot.label} · ${spot.pos.map(Math.round).join(', ')} · ${world.stats.trees} trees, ${world.stats.props} props, ${world.stats.models} models`);
     });
+  }
+
+  // Lighting: in a world, the map's own sun / ambient / fog for the hero's zone and time of day,
+  // plus the nearest local lights; otherwise the studio lights.
+  applyLighting() {
+    this.pointLights.clear();
+    if (!this.world) {
+      this.hemi.color.set(0xdfe8ff); this.hemi.groundColor.set(0x302822); this.hemi.intensity = 1.6;
+      this.key.color.set(0xffffff); this.key.intensity = 2.2; this.key.position.set(200, 400, 250); this.key.target.position.set(0, 0, 0);
+      this.rim.intensity = 1.0;
+      return;
+    }
+    const tod = $('#optTod').value;
+    const L = this.world.lighting.at(this.spot.pos, tod);
+    const toThree = (v) => new THREE.Vector3(v.x, v.z, -v.y);
+    const dir = toThree(L.dir).normalize();
+    this.key.color.copy(L.color);
+    this.key.intensity = tod === 'night' ? 1.2 : 2.0;
+    this.key.target.position.copy(this.spin.position);
+    this.key.position.copy(this.spin.position).addScaledVector(dir, -3000);
+    this.hemi.color.copy(L.ambient);
+    this.hemi.groundColor.copy(L.ambient).multiplyScalar(0.35);
+    this.hemi.intensity = 1.6;
+    this.rim.intensity = 0.25;
+    this.scene.fog = new THREE.Fog(L.fog.color, Math.max(2500, L.fog.start * 2), Math.max(9000, L.fog.end * 2.5));
+    this.scene.background.copy(L.fog.color);
+    // up to 12 local lights closest to the hero
+    const p = this.spot.pos;
+    const near = this.world.lighting.points
+      .map((l) => ({ l, d: Math.hypot(l.origin[0] - p[0], l.origin[1] - p[1], l.origin[2] - p[2]) }))
+      .filter((x) => x.d < 4000).sort((a, b) => a.d - b.d).slice(0, 12);
+    for (const { l } of near) {
+      const pl = new THREE.PointLight(l.color, l.intensity * 60000, l.radius * 2.5, 2);
+      pl.position.set(l.origin[0], l.origin[2], -l.origin[1]);
+      this.pointLights.add(pl);
+    }
+    this.lightZone = L.zone;
+    // from high above the map, the gameplay fog would hide everything
+    if (this.mapMode) this.scene.fog = new THREE.Fog(L.fog.color, 30000, 80000);
+  }
+
+  // where sounds are heard from: the hero, or the camera's focus when looking at the whole map / a battle
+  listenerPos() { return this.mapMode || this.worldMode === 'battle' ? this.controls.target : this.spin.position; }
+
+  // put back props a battle removed (destroyed towers)
+  restoreWorldProps() {
+    if (!this.worldObj || !this.world) return;
+    this.worldObj.clear();
+    this.worldObj.add(this.world.group.clone());
+  }
+
+  // ---------------------------------------------------------- lane battles
+  startBattle(lanes) {
+    this.stopBattle();
+    if (!this.world) return;
+    const world = this.world, build = world.build;
+    this.battle = new Battle(this, world, lanes, {
+      spawnActor: async (unit) => { const a = new Actor(this, build, unit); return (await a.load()) ? a : null; },
+      disposeActor: (a) => a.dispose(),
+      unitStats: (unit) => actorTemplate(build, unit).then((t) => t?.stats || null).catch(() => null),
+      playSound: (name, p, vol = 1) => {
+        if (!audio.enabled || this.muted) return;
+        const l = this.listenerPos(), d = Math.hypot(p[0] - l.x, p[1] + l.z);
+        const v = vol * Math.max(0, 1 - d / 2200);
+        if (v < 0.04) return;
+        audio.table('scripts', build).then((sc) => { const en = sc[name.toLowerCase()]; if (en) audio.playEntry(build, { name, ...en }, { dest: this.gain, volume: v * 0.7 }); });
+      },
+      onEvent: (text, kind) => this.toast(`⚔ ${text}`, kind === 'tower' ? 'warn' : ''),
+      floatText: (text, p, cls) => this.floatText(text, p, cls),
+      fx: (kind, p) => {
+        const o = new THREE.Object3D();
+        o.position.set(p[0], p[2] + 40, -p[1]);
+        this.scene.add(o);
+        o.updateMatrixWorld(true);
+        this.particles.spawn(kind, o, { follow: false });
+        this.scene.remove(o);
+      },
+    });
+    this.battleHud = document.createElement('div');
+    this.battleHud.className = 'battlehud';
+    this.battleHud.innerHTML = `<div class="row"><span class="r"></span><span class="c"></span><span class="d"></span></div>`
+      + `<div class="row hero"><label>your hero <select class="team"><option value="radiant">fights for Radiant</option>`
+      + `<option value="dire">fights for Dire</option><option value="">watches</option></select></label><span class="hs"></span></div>`
+      + `<div class="row note" title="The real 2011 game logic ran on Valve's servers and never shipped. Unit, hero and ability numbers come from this build's own files; targeting, damage types and wave timing are approximations of Dota's rules.">`
+      + `approximate simulation · numbers from this build's npc files · right-click: move / attack / deny · S: stop · Q W E R: abilities (Axe, Sven, Lina, Zeus, Shadow Fiend; Juggernaut's Blade Fury, Pudge's Rot)</div>`;
+    this.el.append(this.battleHud);
+    const teamSel = this.battleHud.querySelector('select.team');
+    teamSel.onchange = () => this.joinBattle(teamSel.value);
+    this.joinBattle(this.hero?.isHero ? 'radiant' : '');
+    if (!this.hero?.isHero) teamSel.value = '';
+    this.renderBattleHud();
+  }
+
+  // the view's hero takes part in the battle (or just watches)
+  joinBattle(team) {
+    const b = this.battle;
+    if (!b) return;
+    b.removeHero();
+    this.setHeroControls(false);
+    this.liveHp = null;
+    hud.refresh();
+    if (!team || !this.hero?.isHero || !this.model) return;
+    this.walk = null;
+    const find = (...tests) => this.findSequence(...tests);
+    const play = (i, { hold = false, back = null } = {}) => {
+      if (i < 0) return;
+      this.seqSel.value = i;
+      this.suppressVoice = true;
+      this.playSequence(i);
+      this.suppressVoice = false;
+      this.holdOneShot = hold;
+      this.returnTo = back;
+    };
+    const idle = () => find((q) => q.activity === 'ACT_DOTA_IDLE', (q) => /^idle/i.test(q.name), (q) => /idle/i.test(q.name));
+    const attacks = () => (this.model?.mdl.seqs || []).map((q, i) => [q, i]).filter(([q]) => !(q.flags & 0x4) && q.activity === 'ACT_DOTA_ATTACK').map(([, i]) => i);
+    const home = { radiant: this.world.spots.radiant.pos, dire: this.world.spots.dire.pos };
+    b.addHero(team, {
+      stats: this.hero.stats,
+      home,
+      getLevel: () => heroLevel,
+      getPos: () => [this.spin.position.x, -this.spin.position.z, this.spin.position.y],
+      setPos: (p, yaw) => {
+        this.spin.position.set(p[0], p[2], -p[1]);
+        let d = yaw - this.spin.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d));
+        this.spin.rotation.y += d * 0.35;
+      },
+      playRun: () => play(find((q) => /^run$/i.test(q.name), (q) => q.activity === 'ACT_DOTA_RUN' && !/reverse|injured|haste|chase/i.test(q.name),
+        (q) => q.activity === 'ACT_DOTA_RUN', (q) => /run|walk/i.test(q.name))),
+      playIdle: () => play(idle()),
+      playAttack: () => { const a = attacks(); play(a.length ? a[Math.floor(Math.random() * a.length)] : find((q) => /attack/i.test(q.name)), { back: idle() }); },
+      playDeath: () => play(find((q) => q.activity === 'ACT_DOTA_DIE', (q) => /death|die/i.test(q.name)), { hold: true }),
+      abilities: this.hero.abilities.slice(0, 6),
+      abilityLevel: (a) => hud.abilityLevel(a, heroLevel),
+      playCast: (a) => {
+        const seqs = this.model.mdl.seqs, slot = this.hero.abilities.indexOf(a);
+        const tokens = a.name.split('_').slice(1).filter((t) => t.length > 3);
+        let k = seqs.findIndex((q) => q.activity === `ACT_DOTA_CAST_ABILITY_${slot + 1}`);
+        if (k < 0) k = seqs.findIndex((q) => tokens.some((t) => q.name.toLowerCase().includes(t)));
+        // abilities that last (Blade Fury) continue into their looping ACT_DOTA_OVERRIDE_ABILITY_n animation
+        const over = seqs.findIndex((q) => q.activity === `ACT_DOTA_OVERRIDE_ABILITY_${slot + 1}`);
+        play(k, { back: over >= 0 ? over : idle() });
+      },
+      playNamed: (re) => play(find((q) => re.test(q.name)), { back: idle() }),
+    });
+    this.setHeroControls(true);
+    this.toast(`⚔ ${this.hero.name} joins the ${team === 'radiant' ? 'Radiant' : 'Dire'} — right-click to move, attack or deny`);
+  }
+
+  // right mouse button gives orders while the hero fights (camera rotation moves to the middle button)
+  setHeroControls(on) {
+    const c = this.controls, cv = this.renderer.domElement;
+    if (on && !this.heroInput) {
+      this.savedButtons = { ...c.mouseButtons };
+      c.mouseButtons = { ...c.mouseButtons, RIGHT: null, MIDDLE: this.mapMode ? THREE.MOUSE.ROTATE : THREE.MOUSE.DOLLY };
+      const onDown = (e) => { if (e.button === 2) this.heroOrder(e); };
+      const onKey = (e) => {
+        if (e.code !== 'KeyS' || /input|select|textarea/i.test(e.target.tagName) || !this.battle?.hero) return;
+        if (hud.view === this) { this.battle.hero.order = null; this.battle.hero.target = null; this.battle.hero.swing = -1; }
+      };
+      const onTarget = (e) => {
+        if (!this.targeting || e.target !== cv) return;
+        e.stopPropagation(); e.preventDefault();
+        const a = this.targeting, kind = this.targetKind;
+        this.stopTargeting();
+        if (e.button !== 0) return; // right-click cancels
+        if (kind === 'point') {
+          const p = this.pickGround(e);
+          if (p) { this.battle?.cast(a, null, p); this.floatText('◎', p, 'move'); } else this.toast(`${a.title} cancelled — click on the ground`, true);
+          return;
+        }
+        const u = this.pickUnit(e);
+        if (u) this.battle?.cast(a, u);
+        else this.toast(`${a.title} cancelled — click on an enemy creep`, true);
+      };
+      const onEsc = (e) => { if (e.code === 'Escape' && this.targeting) this.stopTargeting(); };
+      cv.addEventListener('pointerdown', onDown);
+      this.el.addEventListener('pointerdown', onTarget, true);
+      addEventListener('keydown', onKey);
+      addEventListener('keydown', onEsc);
+      this.heroInput = () => {
+        cv.removeEventListener('pointerdown', onDown); this.el.removeEventListener('pointerdown', onTarget, true);
+        removeEventListener('keydown', onKey); removeEventListener('keydown', onEsc); this.stopTargeting();
+      };
+    } else if (!on && this.heroInput) {
+      this.heroInput();
+      this.heroInput = null;
+      if (this.savedButtons) c.mouseButtons = this.savedButtons;
+    }
+  }
+
+  startTargeting(a, kind = 'target') {
+    this.targeting = a;
+    this.targetKind = kind;
+    this.el.classList.add('targeting');
+    this.toast(`${a.title}: left-click ${kind === 'point' ? 'a spot on the ground' : 'an enemy creep'} · right-click or Esc cancels`);
+  }
+
+  stopTargeting() {
+    this.targeting = null;
+    this.el.classList.remove('targeting');
+  }
+
+  heroOrder(e) {
+    const b = this.battle;
+    if (!b?.hero || this.targeting) return;
+    const best = this.pickUnit(e);
+    if (best) { if (b.order({ type: 'attack', target: best })) this.floatText(best.team === b.hero.team ? 'deny' : '⚔', best.pos, 'order'); return; }
+    const p = this.pickGround(e);
+    if (p && b.order({ type: 'move', pos: p })) this.floatText('▼', p, 'move');
+  }
+
+  // the battle unit under the cursor: nearest projected unit centre within 45 px
+  pickUnit(e) {
+    const b = this.battle;
+    if (!b) return null;
+    const r = this.renderer.domElement.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    let best = null, bd = 45;
+    const v = new THREE.Vector3();
+    for (const u of b.units) {
+      if (u === b.hero || u.state === 'dead') continue;
+      v.set(u.pos[0], u.pos[2] + (u.kind === 'tower' ? 200 : 60), -u.pos[1]).project(this.camera);
+      if (v.z > 1) continue;
+      const d = Math.hypot((v.x + 1) / 2 * r.width - mx, (1 - v.y) / 2 * r.height - my);
+      if (d < bd) { bd = d; best = u; }
+    }
+    return best;
+  }
+
+  // the terrain point under the mouse, in Source coordinates
+  pickGround(e) {
+    if (!this.worldObj) return null;
+    const r = this.renderer.domElement.getBoundingClientRect();
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), this.camera);
+    const terrain = this.worldObj.children[0]?.children.find((g) => g.children[0]?.name?.startsWith('terrain:'));
+    const hit = ray.intersectObjects(terrain ? terrain.children.filter((m) => !/black|map_edge/.test(m.name)) : [], false)[0];
+    return hit ? [hit.point.x, -hit.point.z, hit.point.y] : null;
+  }
+
+  // "+43" gold, "!" deny and order markers rising from a point in the world
+  floatText(text, p, cls = '') {
+    this.floats ||= [];
+    const d = document.createElement('div');
+    d.className = `floattext ${cls}`;
+    d.textContent = text;
+    this.el.append(d);
+    this.floats.push({ d, p: [...p], age: 0 });
+  }
+
+  updateFloats(dt) {
+    if (!this.floats?.length) return;
+    const r = this.renderer.domElement.getBoundingClientRect(), v = new THREE.Vector3();
+    for (const f of this.floats) {
+      f.age += dt;
+      v.set(f.p[0], f.p[2] + 140 + f.age * 90, -f.p[1]).project(this.camera);
+      f.d.style.transform = `translate(${((v.x + 1) / 2 * r.width).toFixed(0)}px, ${((1 - v.y) / 2 * r.height).toFixed(0)}px) translate(-50%, -50%)`;
+      f.d.style.opacity = String(Math.max(0, 1 - f.age / 1.3));
+      f.d.hidden = v.z > 1;
+    }
+    for (const f of this.floats.filter((q) => q.age > 1.3)) f.d.remove();
+    this.floats = this.floats.filter((q) => q.age <= 1.3);
+  }
+
+  stopBattle() {
+    if (!this.battle) return;
+    this.setHeroControls(false);
+    this.liveHp = null;
+    this.holdOneShot = false;
+    this.battle.dispose();
+    this.battle = null;
+    this.battleHud?.remove();
+    this.battleHud = null;
+    for (const f of this.floats || []) f.d.remove();
+    this.floats = [];
+    hud.refresh();
+  }
+
+  toggleBattle(lanes) { if (this.battle) this.stopBattle(); else this.startBattle(lanes); }
+
+  renderBattleHud() {
+    if (!this.battleHud || !this.battle) return;
+    const b = this.battle.summary(), mm = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+    const q = (c) => this.battleHud.querySelector(c);
+    q('.r').innerHTML = `Radiant <b>${b.radiant}</b> creeps · ${b.kills.radiant} kills${b.towersLost.dire ? ` · ${b.towersLost.dire} ▲` : ''}`;
+    q('.c').textContent = `${mm(b.time)} · wave ${b.wave} · next in ${b.next}s`;
+    q('.d').innerHTML = `${b.towersLost.radiant ? `${b.towersLost.radiant} ▲ · ` : ''}${b.kills.dire} kills · <b>${b.dire}</b> creeps Dire`;
+    const h = b.hero, hs = q('.hs');
+    if (h) {
+      const st = h.stats;
+      hs.innerHTML = `L${h.level} · <b class="lh">${h.lastHits}</b> last hits · <b class="dn">${h.denies}</b> denies · <b class="g">${h.gold}</b> gold · `
+        + (h.dead ? `<span class="dead">dead — respawn in ${h.respawn}s</span>` : `${Math.ceil(h.hp)}/${Math.round(h.maxHp)} HP`);
+      hs.title = `${this.hero?.name || 'hero'} at level ${h.level}, from npc_heroes.txt of ${this.build}:\n`
+        + `damage ${Math.round(st.dmg[0])}–${Math.round(st.dmg[1])}, attack time ${st.rate.toFixed(2)} s (BAT ${st.bat}), attack point ${st.point} s\n`
+        + `range ${st.range}${st.ranged ? ` (projectile ${st.projSpeed})` : ' melee'}, armor ${st.armor.toFixed(1)}, move speed ${st.speed}, HP regen ${st.regen.toFixed(2)}/s`;
+      this.liveHp = { hp: h.dead ? 0 : h.hp, max: h.maxHp, mana: h.mana, maxMana: h.maxMana,
+        abilities: Object.fromEntries((this.hero?.abilities || []).slice(0, 6).map((a) => [a.name, this.battle.abilityState(a)])) };
+      hud.liveHp(this);
+    } else hs.textContent = '';
+  }
+
+  // whole-map mode: double-clicked ground -> run there in a straight line at the hero's move speed
+  walkTo(p) {
+    if (!this.world) return;
+    if (this.battle?.hero) { this.battle.order({ type: 'move', pos: p }); return; }
+    const from = [this.spin.position.x, -this.spin.position.z, this.spin.position.y];
+    if (Math.hypot(p[0] - from[0], p[1] - from[1]) < 40) return;
+    this.spot = { ...this.spot, label: 'Running' };
+    this.startWalk(this.world.sampleRoute([from, p]));
+  }
+
+  // ---------------------------------------------------------- actors
+  clearActors() {
+    if (this.actorRoot) { this.scene.remove(this.actorRoot); disposeTree(this.actorRoot); this.actorRoot = null; }
+    this.actors = [];
+  }
+
+  // Roshan idling in his pit, and when walking a lane, a creep wave of the walker's side
+  async spawnActors(world, mode, token) {
+    this.clearActors();
+    if (!$('#optActors').checked) return;
+    const root = new THREE.Group();
+    root.rotation.x = -Math.PI / 2; // actors live in Source space
+    this.scene.add(root);
+    this.actorRoot = root;
+    const add = async (unit, setup) => {
+      const a = new Actor(this, world.build, unit);
+      if (!(await a.load()) || token !== this.worldToken) return null;
+      setup(a);
+      root.add(a.group);
+      this.actors.push(a);
+      return a;
+    };
+    if (world.roshan) add('npc_dota_roshan', (a) => { a.place(world.roshan, -45); a.play(/sleep/i, /idle/i); });
+    if (this.walk) {
+      const side = mode.endsWith('good') ? 'goodguys' : 'badguys';
+      const wave = [['melee', -70, 0], ['melee', 0, -40], ['melee', 70, 0], ['ranged', 0, -160]];
+      for (const [kind, lateral, back] of wave) {
+        add(`npc_dota_creep_${side}_${kind}`, (a) => {
+          a.follow = { lateral, dist: back - 120, speed: parseFloat(a.stats.MovementSpeed) || 325 };
+          a.play(/ACT_DOTA_RUN/, /run/i, /walk/i);
+          this.placeOnRoute(a);
+        });
+      }
+    }
+  }
+
+  // position along the walk route at distance d, with a sideways offset
+  routeAt(d, lateral = 0) {
+    const w = this.walk;
+    d = Math.max(0, Math.min(w.total, d));
+    let lo = 0, hi = w.cum.length - 1;
+    while (lo < hi - 1) { const mid = (lo + hi) >> 1; if (w.cum[mid] <= d) lo = mid; else hi = mid; }
+    const a = w.route[lo], b = w.route[hi], t = (d - w.cum[lo]) / ((w.cum[hi] - w.cum[lo]) || 1);
+    const yaw = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    return { p: [a[0] + (b[0] - a[0]) * t - Math.sin(yaw) * lateral, a[1] + (b[1] - a[1]) * t + Math.cos(yaw) * lateral, a[2] + (b[2] - a[2]) * t], yaw };
+  }
+
+  placeOnRoute(a) {
+    const { p, yaw } = this.routeAt(a.follow.dist, a.follow.lateral);
+    a.place(p, THREE.MathUtils.radToDeg(yaw));
+  }
+
+  updateActors(dt) {
+    for (const a of this.actors || []) {
+      if (a.follow && this.walk && playing) {
+        if (a.follow.dist < this.walk.total) a.follow.dist += a.follow.speed * dt * speed;
+        else if (!a.arrived) { a.arrived = true; a.play(/idle/i); }
+        this.placeOnRoute(a);
+      }
+      a.update(dt);
+    }
+  }
+
+  // ---------------------------------------------------------- walking a lane
+  findSequence(...tests) {
+    const seqs = this.model?.mdl.seqs || [];
+    for (const t of tests) {
+      const i = seqs.findIndex((s) => !(s.flags & 0x4) && t(s));
+      if (i >= 0) return i;
+    }
+    return -1;
+  }
+
+  startWalk(route) {
+    const cum = [0];
+    for (let i = 1; i < route.length; i++) cum.push(cum[i - 1] + Math.hypot(route[i][0] - route[i - 1][0], route[i][1] - route[i - 1][1]));
+    this.walk = { route, cum, total: cum[cum.length - 1], dist: 0, since: 0, done: false };
+    const run = this.findSequence((s) => s.activity === 'ACT_DOTA_RUN', (s) => /^run$/i.test(s.name), (s) => /run/i.test(s.name + s.activity));
+    if (run >= 0) { this.seqSel.value = run; this.playSequence(run); }
+  }
+
+  stepWalk(dt) {
+    const w = this.walk;
+    if (!w || w.done || !playing || !this.world) return;
+    const ms = parseFloat(this.hero?.stats?.MovementSpeed) || 300;
+    w.dist = Math.min(w.total, w.dist + ms * dt * speed);
+    // locate the segment and interpolate along it
+    let lo = 0, hi = w.cum.length - 1;
+    while (lo < hi - 1) { const mid = (lo + hi) >> 1; if (w.cum[mid] <= w.dist) lo = mid; else hi = mid; }
+    const a = w.route[lo], b = w.route[hi], seg = (w.cum[hi] - w.cum[lo]) || 1, t = (w.dist - w.cum[lo]) / seg;
+    const p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+    const next = new THREE.Vector3(p[0], p[2], -p[1]);
+    const delta = next.clone().sub(this.spin.position);
+    this.spin.position.copy(next);
+    // the camera and sun follow the hero
+    if (!this.mapMode) { this.controls.target.add(delta); this.camera.position.add(delta); }
+    this.key.position.add(delta); this.key.target.position.add(delta);
+    // turn smoothly toward the direction of travel
+    const look = w.route[Math.min(hi + 3, w.route.length - 1)];
+    const want = Math.atan2(look[1] - p[1], look[0] - p[0]);
+    let d = want - this.spin.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d));
+    this.spin.rotation.y += d * Math.min(1, dt * 6);
+    // every couple of seconds re-pick lighting zone, nearby lights and soundscape for where we are now
+    w.since += dt;
+    if (w.since > 1.5) {
+      w.since = 0;
+      this.spot = { ...this.spot, pos: p };
+      const scapeBefore = this.worldStatus.dataset.scape;
+      this.applyLighting();
+      if (audio.enabled && this.world.soundscapeAt(p) && !String(scapeBefore).startsWith(this.world.soundscapeAt(p).replace(/_(day|night)$/, ''))) this.startAmbience();
+      this.worldStatus.textContent = `${this.spot.label} · ${Math.round(w.dist)} / ${Math.round(w.total)} units · ${p.map(Math.round).join(', ')}${this.lightZone ? ' · light: ' + this.lightZone : ''}${this.worldStatus.dataset.scape ? '  ·  ♪ ' + this.worldStatus.dataset.scape : ''}`;
+    }
+    if (w.dist >= w.total) {
+      w.done = true;
+      const idle = this.findSequence((s) => s.activity === 'ACT_DOTA_IDLE', (s) => /idle/i.test(s.name));
+      if (idle >= 0) { this.seqSel.value = idle; this.playSequence(idle); }
+      this.toast(`arrived after ${Math.round(w.total)} units — ${(w.total / ms).toFixed(0)} s at ${ms} move speed`);
+    }
+  }
+
+  // the map's ambient soundscape for the zone the hero stands in (falls back to Dota.Ambient);
+  // maps with _day/_night variants follow the time of day
+  async startAmbience() {
+    if (!this.world || !audio.enabled) return;
+    this.ambience ||= new Ambience(this);
+    let name = this.world.soundscapeAt(this.spot.pos) || 'Dota.Ambient';
+    const night = $('#optTod').value === 'night';
+    const cat = await audioCatalog(this.world.build);
+    const swapped = night ? name.replace(/_day$/, '_night') : name.replace(/_night$/, '_day');
+    if (cat.soundscapes?.[swapped]) name = swapped;
+    this.worldStatus.textContent = this.worldStatus.textContent.replace(/\s+·\s+♪.*$/, '');
+    await this.ambience.start(this.world.build, name);
+    this.worldStatus.dataset.scape = name;
+    if (!this.worldStatus.textContent.includes('♪')) this.worldStatus.textContent += `  ·  ♪ ${name}`;
   }
 
   frameOnHero(inWorld) {
@@ -781,19 +1580,41 @@ class View {
     }
     if (this.anim.blends.length > 1) this.blendCtl.querySelector('input').hidden = false;
     for (const e of this.anim.events) e.sound = eventSound(e, this.unit?.soundSet);
+    if (!this.suppressVoice) this.voiceReact(this.model.mdl.seqs[i]);
     this.root.rotation.set(-Math.PI / 2, 0, 0); // animated poses are in Source's Z-up space
     this.upAxis = 'Z';
     const up = this.info.querySelector('.up');
     if (up) up.textContent = 'Z (animated)';
     this.timeline.hidden = false;
-    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-    this.timeline.innerHTML = '<div class="head2"></div>' + this.anim.events.map((e, k) =>
-      `<i data-i="${k}" class="${e.sound ? 'snd' : ''}" style="left:${(e.cycle * 100).toFixed(2)}%" `
-      + `title="${(e.cycle * 100).toFixed(0)}%  ${esc(e.name)}  ${esc(e.sound || e.options)}"></i>`).join('');
-    for (const t of this.timeline.querySelectorAll('i.snd')) {
-      t.onpointerdown = (ev) => { ev.stopPropagation(); unlockAudio().then(() => audio.play(this.build, this.anim.events[+t.dataset.i].sound, this)); };
-    }
+    this.returnTo = null;
+    this.particles.clear();
+    // keyframe events: the model's own, plus viewer/events/<hero>.json manifests when present
+    const clip = { name: seq.name, activity: seq.activity, duration: Math.max(1, this.anim.numFrames - 1) / this.anim.fps, events: this.anim.events };
+    const resolveSound = (e) => e.sound || null;
+    this.events.setClip(clip, [], resolveSound);
+    const short = this.unit?.unit?.replace(/^npc_dota_(hero_)?/, '');
+    AnimationEventManager.loadManifest(short).then((manifests) => {
+      if (this.anim?.index !== i || !manifests.length) return;
+      this.events.setClip(clip, manifests, resolveSound);
+      this.events.reset(this.anim.cycle ?? 0);
+      this.renderTimeline();
+    });
+    this.renderTimeline();
     this.applyPose(0);
+  }
+
+  renderTimeline() {
+    const esc = escHtml;
+    this.timeline.innerHTML = '<div class="head2"></div>' + this.events.events.map((e, k) =>
+      `<i data-i="${k}" class="${e.type === 'sound' ? 'snd' : 'fx'}" style="left:${(e.cycle * 100).toFixed(2)}%" `
+      + `title="${(e.cycle * 100).toFixed(0)}%  ${e.type}${e.source === 'manifest' ? ' (manifest)' : ''}: ${esc(e.label)}${e.socket ? ' @ ' + esc(e.socket) : ''}"></i>`).join('');
+    for (const t of this.timeline.querySelectorAll('i')) {
+      t.onpointerdown = (ev) => {
+        ev.stopPropagation();
+        const e = this.events.events[+t.dataset.i];
+        if (e.type === 'sound') unlockAudio().then(() => this.onEventSound(e)); else this.onEventParticle(e);
+      };
+    }
   }
 
   // Samples a decoded sequence at time t: interpolates between frames and between blend columns.
@@ -865,17 +1686,30 @@ class View {
   }
 
   update(dt) {
+    this.stepWalk(dt);
+    this.mapMode?.update(dt);
+    this.updateFloats(dt);
+    if (this.battle) {
+      this.battle.update(playing ? dt * speed : 0);
+      this.battleHudT = (this.battleHudT || 0) + dt;
+      if (this.battleHudT > 0.15) { this.battleHudT = 0; this.renderBattleHud(); }
+    }
+    this.updateActors(dt);
     const a = this.anim;
     if (!a) return;
     const len = Math.max(1, a.numFrames - 1) / a.fps;
     if (playing) {
       a.time += dt * speed;
       a.baseTime = (a.baseTime || 0) + dt * speed;
-      if (!a.looping && a.time > len) a.time = $('#optLoopAll').checked ? 0 : len;
+      if (!a.looping && a.time > len) {
+        // a one-shot started from the HUD returns to what was playing before
+        if (this.returnTo != null) { const back = this.returnTo; this.returnTo = null; this.seqSel.value = back; this.suppressVoice = true; this.playSequence(back); this.suppressVoice = false; return; }
+        a.time = $('#optLoopAll').checked && !this.holdOneShot ? 0 : len;
+      }
     }
     this.applyPose(a.looping ? a.time % len : Math.min(a.time, len));
-    if (playing && a.cycle !== a.prevCycle) this.fireEvents(a.prevCycle, a.cycle);
-    a.prevCycle = a.cycle;
+    this.events.update(a.cycle, { playing });
+    this.particles.update(dt * (playing ? speed : 0));
   }
 
   scrub(e) {
@@ -885,7 +1719,7 @@ class View {
       const c = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
       this.anim.time = c * Math.max(1, this.anim.numFrames - 1) / this.anim.fps * 0.9999;
       this.applyPose(this.anim.time);
-      this.anim.prevCycle = this.anim.cycle; // scrubbing does not fire events
+      this.events.reset(this.anim.cycle); // scrubbing does not fire events
     };
     move(e);
     const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
@@ -937,28 +1771,280 @@ const audio = {
     }
     return { path, buffer: await this.buffers.get(key) };
   },
+  range(s, def) {
+    const p = String(s ?? def).split(',').map(parseFloat).filter((x) => !isNaN(x));
+    return p.length > 1 ? p[0] + Math.random() * (p[1] - p[0]) : p[0] ?? def;
+  },
+  // Plays one soundscript entry ({name, waves, volume, pitch}); returns the source node.
+  async playEntry(build, entry, { view = null, dest = null, label = null, subtitle = '', loop = false, volume = 1 } = {}) {
+    if (!this.enabled || !this.ctx || !entry?.waves?.length) return null;
+    const wave = entry.waves[Math.floor(Math.random() * entry.waves.length)];
+    const { path, buffer } = await this.buffer(build, wave);
+    if (!buffer) { view?.toast(`♪ ${label || entry.name} — ${path} missing`, true); return null; }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    src.loop = loop;
+    src.playbackRate.value = this.range(entry.pitch, 100) / 100;
+    const g = this.ctx.createGain();
+    g.gain.value = Math.min(1, this.range(entry.volume, 1)) * volume;
+    src.connect(g).connect(dest || view?.gain || this.master);
+    src.start();
+    if (view) view.toast(subtitle ? `🗨 ${subtitle}` : `♪ ${label || entry.name} → ${path.replace(/^sound\//, '')}`);
+    return src;
+  },
   async play(build, name, view) {
     if (!this.enabled || !this.ctx) return;
     const scripts = await this.table('scripts', build);
     const entry = scripts[name.toLowerCase()];
     if (!entry) { view?.toast(`♪ ${name} — not in this build's soundscripts`, true); return; }
-    const wave = entry.waves[Math.floor(Math.random() * entry.waves.length)];
-    const { path, buffer } = await this.buffer(build, wave);
-    if (!buffer) { view?.toast(`♪ ${name} — ${path} missing`, true); return; }
-    const range = (s, def) => {
-      const p = String(s ?? def).split(',').map(parseFloat).filter((x) => !isNaN(x));
-      return p.length > 1 ? p[0] + Math.random() * (p[1] - p[0]) : p[0] ?? def;
-    };
-    const src = this.ctx.createBufferSource();
-    src.buffer = buffer;
-    src.playbackRate.value = range(entry.pitch, 100) / 100;
-    const g = this.ctx.createGain();
-    g.gain.value = Math.min(1, range(entry.volume, 1));
-    src.connect(g).connect(view?.gain || this.master);
-    src.start();
-    view?.toast(`♪ ${name} → ${path.replace(/^sound\//, '')}`);
+    return this.playEntry(build, { name, ...entry }, { view, label: name });
+  },
+
+  // ---- music: one track at a time on its own gain
+  musicGain: null, musicVolume: 0.6, music: null,
+  async playMusic(build, item, { loop = true } = {}) {
+    await unlockAudio();
+    this.stopMusic();
+    if (!this.musicGain) {
+      this.musicGain = this.ctx.createGain();
+      this.musicGain.gain.value = this.musicVolume;
+      this.musicGain.connect(this.master);
+    }
+    // item: a soundscript entry, {path} for a bare file, or {layers:[entries]} for stems played in sync
+    const entries = item.layers || [item.waves ? item : { name: item.path, waves: [item.path] }];
+    const loaded = await Promise.all(entries.map((e) => this.buffer(build, e.waves[0])));
+    const ok = loaded.filter((x) => x.buffer);
+    if (!ok.length) return null;
+    const t0 = this.ctx.currentTime + 0.05;
+    const srcs = ok.map(({ buffer }) => {
+      const src = this.ctx.createBufferSource();
+      src.buffer = buffer; src.loop = loop;
+      src.connect(this.musicGain);
+      src.start(t0);
+      return src;
+    });
+    const src = srcs[0];
+    src.stopAll = () => srcs.forEach((s) => { try { s.stop(); } catch { /* already stopped */ } });
+    this.music = { src, srcs, build, label: item.label || entries[0].name, path: ok.map((x) => x.path).join(' + '),
+      duration: Math.max(...ok.map((x) => x.buffer.duration)), started: t0, loop };
+    src.onended = () => { if (this.music?.src === src) { this.music = null; refreshNowPlaying(); } };
+    refreshNowPlaying();
+    return src;
+  },
+  stopMusic() {
+    if (this.music) { (this.music.src.stopAll || (() => this.music.src.stop()))(); this.music = null; }
+    refreshNowPlaying();
   },
 };
+
+// Soundscapes (scripts/soundscapes_*.txt): looping beds plus randomly timed one-shots, possibly
+// nesting other soundscapes. One player per view, routed through the view's gain so mute works.
+class Ambience {
+  constructor(view) { this.view = view; this.nodes = []; this.timers = []; this.name = null; }
+  stop() {
+    for (const n of this.nodes) { try { n.stop(); } catch { /* ignore */ } }
+    for (const t of this.timers) clearTimeout(t);
+    this.nodes = []; this.timers = []; this.name = null;
+  }
+  async start(build, name) {
+    this.stop();
+    if (!audio.enabled || !audio.ctx) return;
+    const cat = await audioCatalog(build);
+    this.name = name;
+    const token = (this.token = Symbol());
+    const run = async (scName, vol, depth) => {
+      const sc = cat.soundscapes?.[scName];
+      if (!sc || depth > 3 || token !== this.token) return;
+      for (const l of sc.loops) {
+        // positioned loops ("origin") are heard at a distance; play them quieter
+        const n = await audio.playEntry(build, { name: scName, waves: [l.wave], volume: l.volume, pitch: l.pitch },
+          { view: null, dest: this.view.gain, loop: true, volume: vol * (l.origin ? 0.45 : 0.8) });
+        if (n) { if (token !== this.token) n.stop(); else this.nodes.push(n); }
+      }
+      for (const r of sc.randoms) {
+        const tick = async () => {
+          if (token !== this.token) return;
+          const n = await audio.playEntry(build, { name: scName, waves: r.waves, volume: r.volume, pitch: r.pitch },
+            { view: null, dest: this.view.gain, volume: vol * 0.7 });
+          if (n) this.nodes.push(n);
+          this.timers.push(setTimeout(tick, audio.range(r.time, 8) * 1000));
+        };
+        this.timers.push(setTimeout(tick, audio.range(r.time, 8) * 500));
+      }
+      for (const c of sc.children) await run(c.name, vol * (parseFloat(c.volume) || 1), depth + 1);
+    };
+    await run(name, 1, 0);
+  }
+}
+
+const catalogs = {};
+const audioCatalog = (build) => (catalogs[build] ||= api(`/api/audio?build=${build}`).then((r) => r.json()).catch(() => ({})));
+
+// ------------------------------------------------------------ audio drawer
+const adState = { tab: 'music', build: null, ambience: null };
+const escHtml = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+function refreshNowPlaying() {
+  const np = $('#nowPlaying');
+  if (!np) return;
+  const m = audio.music;
+  np.hidden = !m;
+  if (m) np.querySelector('.np-title').textContent = `▶ ${m.label}  ·  ${m.path.replace(/sound\//g, '')}`;
+  for (const r of document.querySelectorAll('#adList .row[data-music]')) r.classList.toggle('on', !!m && r.dataset.music === m.label);
+}
+function tickNowPlaying() {
+  const m = audio.music;
+  if (!m || !audio.ctx) return;
+  const t = audio.ctx.currentTime - m.started;
+  const frac = m.loop ? (t % m.duration) / m.duration : Math.min(1, t / m.duration);
+  const bar = document.querySelector('#nowPlaying .np-bar i');
+  if (bar) bar.style.width = (frac * 100).toFixed(1) + '%';
+}
+
+async function renderAudioList() {
+  const build = adState.build;
+  const list = $('#adList');
+  list.innerHTML = '<div class="hint">loading the sound catalogue…</div>';
+  const cat = await audioCatalog(build);
+  if (build !== adState.build) return;
+  const q = $('#adFilter').value.trim().toLowerCase();
+  const hit = (...s) => !q || s.some((x) => String(x || '').toLowerCase().includes(q));
+  const rows = [];
+  const group = (title) => rows.push(`<div class="grp">${escHtml(title)}</div>`);
+  const t = adState.tab;
+  if (t === 'music') {
+    // group soundscript music by its prefix (e.g. deadmau5_01.music, DOTAMusic_Hero)
+    const groups = {};
+    for (const e of cat.music || []) if (hit(e.name, e.waves[0])) (groups[e.name.split('.').slice(0, -1).join('.') || 'music'] ||= []).push(e);
+    for (const [g, es] of Object.entries(groups)) {
+      group(`${g} (${es.length})`);
+      // dynamic-music stems (laning_01_layer_01…03) can be played together, the way the game layers them
+      const themes = {};
+      for (const e of es) { const m = e.name.match(/(.*)_layer_\d+$/); if (m) (themes[m[1]] ||= []).push(e); }
+      for (const [theme, layers] of Object.entries(themes)) if (layers.length > 1) {
+        rows.push(`<div class="row" data-music="${escHtml(theme + ' (layers)')}" data-kind="layers" data-name="${escHtml(theme)}"><span class="nm">▶▶ ${escHtml(theme.split('.').pop())} — all ${layers.length} layers</span><span class="sub">in sync, like the game</span></div>`);
+      }
+      for (const e of es) rows.push(`<div class="row" data-music="${escHtml(e.name)}" data-kind="entry" data-name="${escHtml(e.name)}"><span class="nm">${escHtml(e.name.split('.').pop())}</span><span class="sub">${escHtml(e.waves[0].replace(/^[^a-z0-9]+/i, ''))}</span></div>`);
+    }
+    const files = (cat.musicFiles || []).filter((p) => hit(p));
+    if (files.length) {
+      group(`music files without a soundscript (${files.length})`);
+      for (const p of files) rows.push(`<div class="row" data-music="${escHtml(p)}" data-kind="file" data-path="${escHtml(p)}"><span class="nm">${escHtml(p)}</span></div>`);
+    }
+  } else if (t === 'announcer') {
+    const es = (cat.announcer || []).filter((e) => hit(e.name, e.subtitle));
+    group(`announcer lines (${es.length})`);
+    for (const e of es.slice(0, 1500)) rows.push(`<div class="row" data-kind="say" data-name="${escHtml(e.name)}"><span class="nm">${escHtml(e.name)}</span><span class="sub">${escHtml(e.subtitle)}</span></div>`);
+  } else if (t === 'ambient') {
+    const names = Object.keys(cat.soundscapes || {}).filter((n) => hit(n));
+    group(`soundscapes (${names.length}) — click to play, click again to stop`);
+    for (const n of names) {
+      const sc = cat.soundscapes[n];
+      rows.push(`<div class="row ${adState.ambience?.name === n ? 'on' : ''}" data-kind="scape" data-name="${escHtml(n)}"><span class="nm">${escHtml(n)}</span><span class="sub">${sc.loops.length} loops · ${sc.randoms.length} random · ${sc.children.length} nested</span></div>`);
+    }
+    const amb = (cat.ambientSounds || []).filter((e) => hit(e.name, e.waves[0]));
+    if (amb.length) {
+      group(`ambient sound entries (${amb.length})`);
+      for (const e of amb) rows.push(`<div class="row" data-kind="sfx" data-src="ambientSounds" data-name="${escHtml(e.name)}"><span class="nm">${escHtml(e.name)}</span><span class="sub">${escHtml(e.waves[0])}</span></div>`);
+    }
+  } else if (t === 'ui') {
+    const es = (cat.ui || []).filter((e) => hit(e.name, e.waves[0]));
+    group(`UI sounds (${es.length})`);
+    for (const e of es) rows.push(`<div class="row" data-kind="sfx" data-src="ui" data-name="${escHtml(e.name)}"><span class="nm">${escHtml(e.name)}</span><span class="sub">${escHtml(e.waves[0])}</span></div>`);
+  }
+  list.innerHTML = rows.join('') || '<div class="hint">nothing here in this build</div>';
+  $('#adCount').textContent = `${builds.find((b) => b.key === build)?.label || build}`;
+  refreshNowPlaying();
+}
+
+// manifest sounds given as URLs (e.g. "/sounds/pudge_swing.webm") are fetched from the viewer itself
+const urlBuffers = new Map();
+async function playUrl(url, view) {
+  await unlockAudio();
+  if (!urlBuffers.has(url)) urlBuffers.set(url, fetch(url).then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => b && audio.ctx.decodeAudioData(b)).catch(() => null));
+  const buffer = await urlBuffers.get(url);
+  if (!buffer) { view?.toast(`♪ ${url} not found`, true); return; }
+  const src = audio.ctx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(view?.gain || audio.master);
+  src.start();
+}
+
+// UI click / hover sounds for the HUD, from the build's own UI soundscripts (6.84's when a 2011 build has none)
+async function playUi(build, kind) {
+  if (!audio.enabled) return;
+  const pick = (cat) => {
+    const ui = cat.ui || [];
+    const re = kind === 'hover' ? /rollover|hover|mouseover|_over\b|\.over/i : /click|select|button|confirm/i;
+    return ui.find((e) => re.test(e.name)) || null;
+  };
+  let entry = pick(await audioCatalog(build)), from = build;
+  if (!entry && builds.some((b) => b.key === '2015-09-02')) { entry = pick(await audioCatalog('2015-09-02')); from = '2015-09-02'; }
+  if (entry) audio.playEntry(from, entry, { dest: audio.master, volume: kind === 'hover' ? 0.35 : 0.7 });
+}
+
+const hud = new Hud(document.getElementById('views'), { uiImage, playUi, getLevel: () => heroLevel });
+
+// Map music for world mode: the 2011 builds have one main track (music/dota.mp3); later builds
+// have dynamic packs, so play the default pack's first laning theme with all its layers.
+async function startWorldMusic() {
+  const v = views.find((x) => x.world);
+  if (!v || !audio.enabled || !$('#optWorldMusic').checked) return;
+  const build = v.world.build;
+  if (audio.music?.world === build) return;
+  const cat = await audioCatalog(build);
+  const night = $('#optTod').value === 'night';
+  let item = null;
+  const laning = (cat.music || []).filter((e) => /^valve_dota_001\.music\.laning_0[12]_layer_\d+$/.test(e.name));
+  if (laning.length) {
+    const theme = night && laning.some((e) => e.name.includes('laning_02')) ? 'laning_02' : 'laning_01';
+    item = { layers: laning.filter((e) => e.name.includes(theme)), label: `valve_dota_001 ${theme} (world music)` };
+  } else if ((cat.musicFiles || []).includes('music/dota.mp3')) {
+    item = { path: 'music/dota.mp3', label: 'music/dota.mp3 (world music)' };
+  }
+  if (!item) return;
+  await audio.playMusic(build, item, { loop: true });
+  if (audio.music) audio.music.world = build;
+}
+
+async function onAudioRow(row) {
+  await unlockAudio();
+  const build = adState.build, cat = await audioCatalog(build), name = row.dataset.name;
+  const toastView = views[0];
+  switch (row.dataset.kind) {
+    case 'entry': {
+      const e = cat.music.find((x) => x.name === name);
+      if (audio.music?.label === name) audio.stopMusic(); else await audio.playMusic(build, { ...e, label: name }, { loop: $('#npLoop').checked });
+      break;
+    }
+    case 'layers': {
+      const label = name + ' (layers)';
+      const layers = cat.music.filter((x) => x.name.startsWith(name + '_layer_'));
+      if (audio.music?.label === label) audio.stopMusic(); else await audio.playMusic(build, { layers, label }, { loop: true });
+      break;
+    }
+    case 'file':
+      if (audio.music?.label === row.dataset.path) audio.stopMusic();
+      else await audio.playMusic(build, { path: row.dataset.path, label: row.dataset.path }, { loop: $('#npLoop').checked });
+      break;
+    case 'say': {
+      const e = cat.announcer.find((x) => x.name === name);
+      await audio.playEntry(build, e, { view: toastView, dest: audio.master, subtitle: e.subtitle ? `Announcer: ${e.subtitle}` : '', label: name });
+      break;
+    }
+    case 'sfx': {
+      const e = cat[row.dataset.src].find((x) => x.name === name);
+      await audio.playEntry(build, e, { view: toastView, dest: audio.master, label: name });
+      break;
+    }
+    case 'scape': {
+      adState.ambience ||= new Ambience({ get gain() { return audio.master; } });
+      if (adState.ambience.name === name) adState.ambience.stop(); else await adState.ambience.start(build, name);
+      renderAudioList();
+      break;
+    }
+  }
+}
 
 // Fallback for WAVs the browser refuses: parse RIFF ourselves (8/16-bit PCM).
 function decodePCM(ctx, buf) {
@@ -993,6 +2079,173 @@ function eventSound(e, soundSet) {
     return soundSet ? soundSet + '.Attack' : null;
   }
   return null;
+}
+
+// Frees everything a removed subtree owns on the GPU: geometry, materials and — easy to forget — each
+// SkinnedMesh's Skeleton, which holds its own bone-matrix texture. Shared textures (caches) are left alone.
+function disposeTree(root) {
+  const skeletons = new Set();
+  root.traverse((o) => {
+    if (o.isSkinnedMesh && o.skeleton) skeletons.add(o.skeleton);
+    if (o.userData.shared) return; // shared actor template, freed by trimActorTemplates()
+    o.geometry?.dispose();
+    if (o.material) [].concat(o.material).forEach((m) => m.dispose());
+  });
+  for (const s of skeletons) s.dispose();
+}
+
+// ------------------------------------------------------------ actors (creeps, Roshan…)
+// Lightweight animated units for world mode: a unit from npc_units / npc_heroes, its model skinned to
+// its own skeleton, one looping sequence, positioned in Source space inside a Z-up container.
+const actorTex = new Map();
+async function actorTexture(build, path) {
+  const key = build + '|' + path;
+  if (!actorTex.has(key)) actorTex.set(key, tryFile(build, path).then((buf) => {
+    if (!buf) return null;
+    const t = parseVTF(buf);
+    const tex = new THREE.DataTexture(t.rgba, t.width, t.height, THREE.RGBAFormat);
+    tex.colorSpace = THREE.SRGBColorSpace; tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.needsUpdate = true;
+    return tex;
+  }).catch(() => null));
+  return actorTex.get(key);
+}
+
+// One parsed model + GPU geometry/materials per build and unit, shared by every copy of that unit
+// (a lane battle spawns dozens of identical creeps). Each copy still gets its own skeleton.
+const actorTemplates = new Map();
+function actorTemplate(build, unit) {
+  const key = build + '|' + unit;
+  if (!actorTemplates.has(key)) actorTemplates.set(key, (async () => {
+    const h = await api(`/api/hero?build=${build}&unit=${unit}`).then((r) => r.json()).catch(() => null);
+    if (!h?.stats?.Model) return null;
+    const path = h.stats.Model.toLowerCase().split('\\').join('/');
+    const base = path.replace(/\.mdl$/, '');
+    const [a, v, x] = await Promise.all([tryFile(build, path), tryFile(build, base + '.vvd'),
+      tryFile(build, base + '.dx90.vtx').then((b) => b || tryFile(build, base + '.vtx'))]);
+    if (!a || !v || !x) return null;
+    const model = buildModel(a, v, x);
+    const parts = [];
+    for (const m of model.meshes) {
+      let tex = null, alpha = false;
+      for (const vp of materialPaths(model.mdl, m.material)) {
+        const buf = await tryFile(build, vp);
+        if (!buf) continue;
+        const vmt = parseVMT(new TextDecoder().decode(buf));
+        tex = await actorTexture(build, texturePath(vmt.params['$basetexture']));
+        alpha = '$alphatest' in vmt.params || '$translucent' in vmt.params;
+        break;
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
+      g.setAttribute('normal', new THREE.BufferAttribute(m.nrm, 3));
+      g.setAttribute('uv', new THREE.BufferAttribute(m.uv, 2));
+      g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(m.bone, 4));
+      g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(m.weight, 4));
+      g.setIndex(new THREE.BufferAttribute(m.idx, 1));
+      parts.push({ geo: g, mat: new THREE.MeshLambertMaterial({ map: tex, color: tex ? 0xffffff : 0x8a8a80, side: THREE.DoubleSide, alphaTest: alpha ? 0.5 : 0 }) });
+    }
+    return { stats: h.stats, model, parts, seqs: new Map() };
+  })());
+  return actorTemplates.get(key);
+}
+// free shared actor models of builds no view shows any more
+function trimActorTemplates() {
+  const keep = new Set(views.map((v) => v.build));
+  for (const [key, p] of actorTemplates) {
+    if (keep.has(key.split('|')[0])) continue;
+    actorTemplates.delete(key);
+    p.then((t) => t?.parts.forEach(({ geo, mat }) => { geo.dispose(); mat.dispose(); }));
+  }
+}
+
+class Actor {
+  constructor(view, build, unit) { this.view = view; this.build = build; this.unit = unit; this.group = new THREE.Group(); this.time = Math.random() * 3; }
+
+  async load() {
+    const t = await actorTemplate(this.build, this.unit);
+    if (!t) return false;
+    this.template = t;
+    this.stats = t.stats;
+    const model = (this.model = t.model);
+    this.bones = model.mdl.bones.map((b) => { const o = new THREE.Bone(); o.position.fromArray(b.pos); o.quaternion.fromArray(b.quat); return o; });
+    model.mdl.bones.forEach((b, i) => (b.parent >= 0 ? this.bones[b.parent] : this.group).add(this.bones[i]));
+    this.skeleton = new THREE.Skeleton(this.bones, model.mdl.bones.map((b) => {
+      const m = b.poseToBone;
+      return new THREE.Matrix4().set(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], 0, 0, 0, 1);
+    }));
+    for (const { geo, mat } of t.parts) {
+      const mesh = new THREE.SkinnedMesh(geo, mat);
+      mesh.bind(this.skeleton, new THREE.Matrix4());
+      mesh.frustumCulled = false;
+      mesh.userData.shared = true; // geometry/material belong to the template
+      this.group.add(mesh);
+    }
+    const s = parseFloat(t.stats.ModelScale || '1') || 1;
+    this.group.scale.setScalar(s);
+    return true;
+  }
+
+  // frees only what this copy owns (its skeleton's bone texture); the template stays cached
+  dispose() { this.skeleton?.dispose(); this.group.removeFromParent(); }
+
+  // a one-shot (attack, death): plays once, then either holds the last frame or goes back to `after`
+  playOnce(...tests) {
+    this.play(...tests);
+    this.once = true;
+    this.after = null;
+    this.time = 0;
+    this.prevCycle = 0;
+  }
+  playThen(tests, after) { this.playOnce(...tests); this.after = after; }
+
+  // play the first sequence matching any of the tests (activity or name)
+  play(...tests) {
+    const seqs = this.model?.mdl.seqs || [];
+    let i = -1;
+    for (const t of tests) { i = seqs.findIndex((q) => !(q.flags & 0x4) && t.test(`${q.activity} ${q.name}`)); if (i >= 0) break; }
+    if (i < 0) i = seqs.findIndex((q) => q.name !== 'BindPose' && !(q.flags & 0x4));
+    if (i < 0) return;
+    const cache = this.template?.seqs;
+    if (cache && !cache.has(i)) cache.set(i, decodeSequence(this.model.mdl, i));
+    this.anim = cache ? cache.get(i) : decodeSequence(this.model.mdl, i);
+    for (const e of this.anim.events) e.sound = eventSound(e, this.stats.SoundSet);
+    this.once = false;
+    this.prevCycle = 0;
+  }
+
+  place(pos, yawDeg) {
+    this.group.position.set(pos[0], pos[1], pos[2]);
+    this.group.rotation.set(0, 0, THREE.MathUtils.degToRad(yawDeg));
+  }
+
+  update(dt) {
+    const a = this.anim;
+    if (!a) return;
+    if (playing) this.time += dt * speed;
+    const n = a.numFrames, span = Math.max(1, n - 1);
+    const f = this.once ? Math.min(this.time * a.fps, span) : (this.time * a.fps) % span, f0 = Math.floor(f), f1 = Math.min(f0 + 1, n - 1), k = f - f0;
+    const A = a.frames[f0], B = a.frames[f1], qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
+    for (let b = 0; b < this.bones.length; b++) {
+      this.bones[b].position.set(A.pos[b * 3] + (B.pos[b * 3] - A.pos[b * 3]) * k, A.pos[b * 3 + 1] + (B.pos[b * 3 + 1] - A.pos[b * 3 + 1]) * k,
+        A.pos[b * 3 + 2] + (B.pos[b * 3 + 2] - A.pos[b * 3 + 2]) * k);
+      qa.fromArray(A.quat, b * 4); qb.fromArray(B.quat, b * 4);
+      this.bones[b].quaternion.copy(qa).slerp(qb, k);
+    }
+    // sound events, quieter with distance from the hero
+    const cycle = f / span;
+    if (playing && audio.enabled && !this.view.muted) {
+      const hero = this.view.listenerPos(), me = new THREE.Vector3(this.group.position.x, this.group.position.z, -this.group.position.y);
+      const vol = Math.max(0, 1 - hero.distanceTo(me) / 1400);
+      if (vol > 0.05) for (const e of a.events) {
+        if (!e.sound) continue;
+        const hit = cycle >= this.prevCycle ? e.cycle > this.prevCycle && e.cycle <= cycle : e.cycle > this.prevCycle || e.cycle <= cycle;
+        if (hit) audio.table('scripts', this.build).then((s) => { const en = s[e.sound.toLowerCase()]; if (en) audio.playEntry(this.build, { name: e.sound, ...en }, { dest: this.view.gain, volume: vol * 0.6 }); });
+      }
+    }
+    this.prevCycle = cycle;
+    if (this.once && this.after && f >= span) this.play(...this.after);
+  }
 }
 
 let views = [];
@@ -1085,7 +2338,8 @@ function syncFrom(src) {
   const offset = src.camera.position.clone().sub(src.controls.target);
   const anyWorld = views.some((v) => v.worldMode);
   for (const v of views) if (v !== src) {
-    if (!anyWorld) v.controls.target.copy(src.controls.target);
+    // whole-map views share map coordinates, so they can share the camera exactly
+    if (!anyWorld || (src.mapMode && v.mapMode)) v.controls.target.copy(src.controls.target);
     v.camera.position.copy(v.controls.target).add(offset);
     v.controls.update();
   }
@@ -1124,8 +2378,12 @@ function layout() {
   }
   while (views.length > n) {
     const v = views.pop();
+    // stop everything the view runs on its own (battle, map overlay, ambience, world actors)
+    v.stopBattle(); v.mapMode?.leave(); v.mapMode = null; v.ambience?.stop(); v.clearActors(); v.worldToken = Symbol();
     v.clear(); v.renderer.dispose(); v.el.remove();
   }
+  // the HUD must not stay bound to a view that was just removed
+  if (!views.includes(hud.view) && views[0]) hud.bind(views[0]);
   $('#views').style.setProperty('--n', n);
   for (const v of views) v.resize();
 }
@@ -1168,7 +2426,7 @@ function select(p) {
 // ------------------------------------------------------------ boot
 builds = (await api('/api/builds').then((r) => r.json())).filter((b) => b.available);
 const listDefault = builds.some((b) => b.key === '2011-07-14') ? '2011-07-14' : builds[builds.length - 1]?.key;
-for (const b of builds) $('#listBuild').append(new Option(b.label, b.key, false, b.key === listDefault));
+for (const b of builds) { const o = new Option(b.label, b.key, false, b.key === listDefault); o.title = buildTitle(b); $('#listBuild').append(o); }
 $('#listBuild').onchange = refreshList;
 $('#q').oninput = refreshList;
 for (const c of document.querySelectorAll('#chips button')) c.onclick = () => {
@@ -1189,21 +2447,63 @@ async function unlockAudio() {
   }
 }
 $('#optSound').onclick = async () => {
-  if (audio.enabled) { audio.enabled = false; $('#optSound').textContent = '🔇 sound off'; return; }
+  if (audio.enabled) {
+    audio.enabled = false; $('#optSound').textContent = '🔇 sound off';
+    audio.stopMusic(); adState.ambience?.stop();
+    for (const v of views) v.ambience?.stop();
+    return;
+  }
   await unlockAudio();
-  for (const v of views) if (v.anim) v.anim.prevCycle = v.anim.cycle;
+  for (const v of views) { if (v.anim) v.events.reset(v.anim.cycle); if (v.world) v.startAmbience(); }
+  startWorldMusic();
 };
+// audio drawer
+for (const b of builds) { const o = new Option(b.label, b.key); o.title = buildTitle(b); $('#adBuild').append(o); }
+$('#optAudio').onclick = async () => {
+  const d = $('#audioDrawer');
+  d.hidden = !d.hidden;
+  if (!d.hidden) {
+    d.style.top = document.querySelector('.toolbar').offsetHeight + 'px'; // the toolbar can wrap
+    if (!adState.build) { adState.build = views[0]?.build || builds[0].key; $('#adBuild').value = adState.build; }
+    await unlockAudio();
+    renderAudioList();
+  }
+};
+$('#adClose').onclick = () => ($('#audioDrawer').hidden = true);
+$('#adBuild').onchange = () => { adState.build = $('#adBuild').value; renderAudioList(); };
+$('#adFilter').oninput = () => renderAudioList();
+for (const b of document.querySelectorAll('#adTabs button')) b.onclick = () => {
+  for (const o of document.querySelectorAll('#adTabs button')) o.classList.toggle('on', o === b);
+  adState.tab = b.dataset.t; renderAudioList();
+};
+$('#adList').onclick = (e) => { const row = e.target.closest('.row'); if (row) onAudioRow(row); };
+$('#npStop').onclick = () => audio.stopMusic();
+$('#npLoop').onchange = () => { if (audio.music) { for (const s of audio.music.srcs || [audio.music.src]) s.loop = $('#npLoop').checked; audio.music.loop = $('#npLoop').checked; } };
+$('#optWorldMusic').onchange = () => ($('#optWorldMusic').checked ? startWorldMusic() : (audio.music?.world && audio.stopMusic()));
+$('#npVol').oninput = () => { audio.musicVolume = +$('#npVol').value; if (audio.musicGain) audio.musicGain.gain.value = audio.musicVolume; };
+
+$('#optMap').onclick = () => {
+  const to = views.some((v) => v.worldMode !== 'map') ? 'map' : '';
+  views.forEach((v) => v.setWorld(to));
+};
+$('#optTints').onchange = () => setTerrainTints($('#optTints').checked);
+$('#optTod').onchange = () => views.forEach((v) => { if (v.world) { v.applyLighting(); v.startAmbience(); } });
+
 $('#optStats').onchange = () => views.forEach((v) => { if (v.statsPanel) v.statsPanel.hidden = !$('#optStats').checked; });
 $('#optLevel').oninput = () => {
   heroLevel = +$('#optLevel').value;
   $('#optLevelVal').textContent = heroLevel;
   views.forEach((v) => v.renderStatsKeepIcons());
   refreshStatDiffs();
+  hud.refresh();
 };
+$('#optHud').onchange = () => hud.refresh();
 $('#optVol').oninput = () => { audio.volume = +$('#optVol').value; if (audio.master) audio.master.gain.value = audio.volume; };
 addEventListener('resize', () => views.forEach((v) => v.resize()));
 
+await hud.mount();
 layout();
+window.dotaViewer = { views, hud, audio }; // handle for debugging from the browser console
 await refreshList();
 // load the other builds' lists in the background so "only here" tags can appear
 Promise.all(builds.map((b) => lists[b.key] || api(`/api/models?build=${b.key}`).then((r) => r.json()).then((l) => (lists[b.key] = l))))
@@ -1215,6 +2515,9 @@ const clock = new THREE.Clock();
 (function tick() {
   requestAnimationFrame(tick);
   const dt = clock.getDelta();
+  tickNowPlaying();
+  const now = performance.now();
+  for (const v of views) v.world?.tick(now);
   for (const v of views) {
     if ($('#optSpin').checked) v.spin.rotation.y += dt * 0.5;
     v.update(dt);

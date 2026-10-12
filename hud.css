@@ -1,0 +1,98 @@
+/* Panorama-style hero HUD: dark stone/slate with bronze trims (#c29c53 → #483920).
+   The wrapper never blocks the 3D view; only the interactive bits take pointer events. */
+.dhud { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 15; pointer-events: none;
+  font: 12px/1.2 "Radiance", "Trebuchet MS", system-ui, sans-serif; color: #d9d2c0; user-select: none;
+  --bronze-hi: #c29c53; --bronze-lo: #483920; --stone-1: #1d2124; --stone-2: #0e1113; }
+.dhud-meta { text-align: center; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8d846f;
+  margin-bottom: 2px; text-shadow: 0 1px 2px #000; }
+.dhud-bar { display: flex; align-items: stretch; gap: 0; padding: 6px 10px 8px; pointer-events: auto;
+  background: linear-gradient(180deg, #2a2f33 0%, var(--stone-1) 22%, var(--stone-2) 100%);
+  border: 1px solid var(--bronze-lo); border-bottom: 0; border-radius: 10px 10px 0 0;
+  box-shadow: inset 0 1px 0 rgba(194,156,83,.55), inset 0 0 0 2px #0a0c0d, inset 0 -18px 30px rgba(0,0,0,.45), 0 -6px 18px rgba(0,0,0,.55);
+  position: relative; }
+.dhud-bar::before { content: ''; position: absolute; left: 14px; right: 14px; top: -1px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--bronze-hi), var(--bronze-lo) 50%, var(--bronze-hi), transparent); }
+
+/* portrait: angled / beveled frame with a level pip */
+.dhud-portrait { position: relative; width: 132px; height: 92px; margin-right: 8px;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  background: linear-gradient(135deg, var(--bronze-hi), var(--bronze-lo)); padding: 2px; }
+.dhud-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; background: #050607;
+  clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px); }
+.dhud-name { position: absolute; left: 6px; right: 6px; bottom: 4px; font-weight: 700; font-size: 12px; text-transform: uppercase;
+  letter-spacing: .05em; color: #f3e6c4; text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+.dhud-level { position: absolute; right: -2px; top: -2px; width: 26px; height: 26px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f1d58a, var(--bronze-hi) 45%, var(--bronze-lo) 100%);
+  border: 1px solid #1a140a; display: grid; place-items: center; box-shadow: 0 1px 4px #000; }
+.dhud-level span { font-weight: 800; color: #1b1308; font-size: 12px; }
+
+/* attributes */
+.dhud-attrs { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; align-content: center; margin-right: 10px; min-width: 128px; }
+.dhud-attrs .attr { display: flex; gap: 5px; align-items: center; background: rgba(0,0,0,.35); border: 1px solid #2b2620;
+  border-radius: 3px; padding: 2px 6px; }
+.dhud-attrs .attr i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.6); }
+.dhud-attrs .str i { background: #c8392b; } .dhud-attrs .agi i { background: #3fae3f; } .dhud-attrs .int i { background: #3a8fdc; }
+.dhud-attrs .attr span { width: 10px; text-align: center; color: #b9a882; font-size: 11px; }
+.dhud-attrs .attr b { font-weight: 700; font-variant-numeric: tabular-nums; color: #efe6cf; }
+.dhud-attrs .attr.primary { border-color: var(--bronze-hi); box-shadow: 0 0 6px rgba(194,156,83,.35); }
+
+/* abilities */
+.dhud-center { display: flex; flex-direction: column; gap: 6px; justify-content: flex-end; }
+.dhud-abilities { display: flex; gap: 6px; justify-content: center; }
+.dhud-ab { position: relative; width: 62px; height: 62px; border-radius: 3px; cursor: pointer; pointer-events: auto;
+  background: #000; border: 1px solid #000; box-shadow: 0 0 0 1px var(--bronze-lo), inset 0 0 0 1px rgba(255,255,255,.08);
+  transition: filter .12s, transform .06s; }
+.dhud-ab img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 2px; filter: brightness(.92); }
+.dhud-ab:hover img { filter: brightness(1.25) saturate(1.1); }
+.dhud-ab:active, .dhud-ab.pressed { transform: translateY(1px) scale(.97); }
+.dhud-ab.pressed img { filter: brightness(1.5); }
+.dhud-ab.ult { box-shadow: 0 0 0 1px var(--bronze-hi), 0 0 8px rgba(194,156,83,.35); }
+.dhud-ab.passive { cursor: default; }
+.dhud-ab .key { position: absolute; left: 2px; top: 2px; min-width: 14px; height: 14px; padding: 0 2px; border-radius: 2px;
+  background: rgba(0,0,0,.78); color: #e8dcc0; font-size: 10px; font-weight: 700; display: grid; place-items: center; }
+.dhud-ab .mana { position: absolute; right: 2px; bottom: 2px; padding: 0 3px; border-radius: 2px; font-size: 10px; font-weight: 700;
+  background: rgba(14,40,92,.92); color: #a9d0ff; }
+.dhud-ab .cd { position: absolute; left: 2px; bottom: 2px; padding: 0 3px; border-radius: 2px; font-size: 9px;
+  background: rgba(0,0,0,.72); color: #c9c0aa; }
+.dhud-ab .pips { position: absolute; left: 0; right: 0; bottom: -6px; display: flex; gap: 2px; justify-content: center; }
+.dhud-ab .pips i { width: 8px; height: 3px; background: #2b2620; border-radius: 1px; }
+.dhud-ab .pips i.on { background: #e3b94f; box-shadow: 0 0 3px #e3b94f; }
+.dhud-ab .tip { display: none; position: absolute; bottom: 72px; left: 50%; transform: translateX(-50%); width: 260px; z-index: 3;
+  background: #111416; border: 1px solid var(--bronze-lo); border-radius: 4px; padding: 8px 10px; font-size: 11.5px; line-height: 1.35;
+  color: #cfc7b3; box-shadow: 0 4px 14px #000; pointer-events: none; }
+.dhud-ab .tip b { display: block; color: #f3e6c4; font-size: 13px; margin-bottom: 3px; }
+.dhud-ab:hover .tip { display: block; }
+
+/* resource bars */
+.dhud-res { display: flex; flex-direction: column; gap: 3px; }
+.res { position: relative; height: 17px; width: 100%; min-width: 300px; background: #070809; border: 1px solid #000;
+  box-shadow: 0 0 0 1px #2a251d; border-radius: 2px; overflow: hidden; }
+.res .fill { position: absolute; inset: 0; }
+.res.hp .fill { background: linear-gradient(180deg, #4eb63c 0%, #2f8a24 45%, #1d5a16 100%); }
+.res.mp .fill { background: linear-gradient(180deg, #4f86e0 0%, #2858b4 45%, #183a7c 100%); }
+/* 250 HP tick marks: --tick is the width of 250 HP as a share of max HP */
+.res.hp .ticks { position: absolute; inset: 0; opacity: .55;
+  background: repeating-linear-gradient(90deg, transparent 0, transparent calc(var(--tick, 10%) - 1px), rgba(0,0,0,.65) calc(var(--tick, 10%) - 1px), rgba(0,0,0,.65) var(--tick, 10%)); }
+.res span { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; font-size: 11.5px; color: #fff;
+  text-shadow: 0 1px 2px #000, 0 0 2px #000; font-variant-numeric: tabular-nums; }
+.res em { position: absolute; right: 6px; top: 0; bottom: 0; display: grid; place-items: center; font-style: normal;
+  font-size: 10px; color: #d6f5c8; text-shadow: 0 1px 2px #000; }
+.res.mp em { color: #cfe0ff; }
+
+@media (max-width: 900px) {
+  .dhud-attrs { display: none; }
+  .dhud-portrait { width: 92px; height: 70px; }
+  .dhud-ab { width: 46px; height: 46px; }
+  .res { min-width: 200px; }
+}
+
+/* live battle state */
+.dhud-ab .cdleft { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 800; font-size: 20px; color: #fff;
+  text-shadow: 0 1px 3px #000; pointer-events: none; }
+.dhud-ab.oncd img { filter: grayscale(.85) brightness(.4); }
+.dhud-ab.nomana img { filter: saturate(.4) brightness(.6) sepia(.3) hue-rotate(180deg); }
+.dhud-ab.active { box-shadow: 0 0 0 2px #7cf07c, 0 0 12px rgba(124,240,124,.6); }
+.dhud-ab.nosim img { filter: grayscale(1) brightness(.55); }
+.dhud-ab.nosim::after { content: 'not simulated'; position: absolute; left: 0; right: 0; top: 22px; text-align: center; font-size: 8px;
+  color: #d8cfb8; text-shadow: 0 1px 2px #000; pointer-events: none; }
+.dhud-ab.unlearned img { filter: grayscale(.7) brightness(.35); }

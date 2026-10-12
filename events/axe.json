@@ -1,0 +1,19 @@
+[
+  {
+    "hero_id": "axe",
+    "clip_name": "attack_main",
+    "replace": false,
+    "events": [
+      { "time": 0.36, "type": "particle", "preset": "sparks", "socket": "attach_weapon" },
+      { "time": 0.36, "type": "particle", "preset": "flash", "socket": "attach_weapon", "follow": false }
+    ]
+  },
+  {
+    "hero_id": "axe",
+    "clip_name": "berserkers_call",
+    "events": [
+      { "time": 0.15, "type": "sound", "src": "Hero_Axe.Berserkers_Call" },
+      { "time": 0.15, "type": "particle", "preset": "spin", "socket": "attach_hitloc", "follow": false }
+    ]
+  }
+]

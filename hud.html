@@ -1,0 +1,26 @@
+<!-- Panorama-style hero HUD. Loaded by hud.js and inserted over the viewport; data-bind fields are filled from the bound view. -->
+<div class="dhud" hidden>
+  <div class="dhud-meta"><span data-bind="build"></span></div>
+  <div class="dhud-bar">
+    <div class="dhud-portrait">
+      <img data-bind="portrait" alt="">
+      <div class="dhud-name" data-bind="name"></div>
+      <div class="dhud-level"><span data-bind="level">1</span></div>
+    </div>
+    <div class="dhud-attrs">
+      <div class="attr str" title="Strength"><i></i><b data-bind="str">0</b></div>
+      <div class="attr agi" title="Agility"><i></i><b data-bind="agi">0</b></div>
+      <div class="attr int" title="Intelligence"><i></i><b data-bind="int">0</b></div>
+      <div class="attr dmg" title="Damage"><span>⚔</span><b data-bind="dmg">0</b></div>
+      <div class="attr arm" title="Armor"><span>⛨</span><b data-bind="armor">0</b></div>
+      <div class="attr ms" title="Move speed"><span>➶</span><b data-bind="ms">0</b></div>
+    </div>
+    <div class="dhud-center">
+      <div class="dhud-abilities" data-bind="abilities"></div>
+      <div class="dhud-res">
+        <div class="res hp" title="Health"><div class="fill"></div><div class="ticks"></div><span data-bind="hp">0 / 0</span><em data-bind="hpregen"></em></div>
+        <div class="res mp" title="Mana"><div class="fill"></div><span data-bind="mana">0 / 0</span><em data-bind="manaregen"></em></div>
+      </div>
+    </div>
+  </div>
+</div>

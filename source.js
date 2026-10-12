@@ -76,6 +76,17 @@ export function parseMDL(buf) {
     });
   }
 
+  // attachments (mstudioattachment_t, 92 bytes): named sockets on bones — attach_hitloc, attach_weapon…
+  // sznameindex, flags, localbone, then a 3x4 local matrix relative to that bone
+  const numAtt = i32(240), attIdx = i32(244);
+  hdr.attachments = [];
+  for (let i = 0; i < numAtt && i < 256; i++) {
+    const o = attIdx + i * 92;
+    const m = [];
+    for (let k = 0; k < 12; k++) m.push(f32(o + 12 + k * 4));
+    hdr.attachments.push({ name: cstr(dv, o + i32(o)), bone: i32(o + 8), local: m });
+  }
+
   // pose parameters (mstudioposeparamdesc_t, 20 bytes): what drives blended sequences, e.g. body turning
   const numPose = i32(300), poseIdx = i32(304);
   hdr.poseParams = [];
