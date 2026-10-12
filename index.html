@@ -136,6 +136,8 @@
   .view { position: relative; border-right: 1px solid var(--line); min-width: 0; min-height: 0; overflow: hidden; }
   .view:last-child { border-right: 0; }
   .view canvas { display: block; width: 100%; height: 100%; }
+  .shared-gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  .view .surface { position: absolute; inset: 0; touch-action: none; }
   .view .head { position: absolute; left: 10px; top: 10px; right: 10px; display: flex; gap: 8px; align-items: center; pointer-events: none; }
   .view .head select { width: auto; min-width: 0; flex: 0 1 auto; pointer-events: auto; background: rgba(22,27,33,.9); }
   .view .info { position: absolute; left: 10px; bottom: 10px; right: 10px; background: rgba(15,18,22,.82);
@@ -161,6 +163,17 @@
   .view .head select.build { max-width: 330px; }
   .view .head .step { pointer-events: auto; padding: 4px 7px; font-size: 11px; }
   .view .head .step:disabled { opacity: .35; }
+  /* loading screen */
+  .view .loading { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; opacity: 0; transition: opacity .25s;
+    background: radial-gradient(ellipse at center, rgba(22,20,16,.94), rgba(8,9,11,.97)); }
+  .view .loading.on { opacity: 1; }
+  .view .ld-box { display: grid; justify-items: center; gap: 10px; max-width: min(460px, 86%); text-align: center; }
+  .view .ld-spin { width: 46px; height: 46px; border-radius: 50%; border: 3px solid rgba(194,156,83,.18); border-top-color: #c29c53;
+    animation: ldspin 0.9s linear infinite; box-shadow: 0 0 18px rgba(194,156,83,.15); }
+  @keyframes ldspin { to { transform: rotate(360deg); } }
+  .view .ld-title { font: 600 13px/1.3 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #e8dcc0; }
+  .view .ld-status { font: 11px ui-monospace, Consolas, monospace; color: #9a9180; min-height: 14px; }
+  .view .ld-tip { margin-top: 10px; font-size: 12px; line-height: 1.5; color: #b8ad94; border-top: 1px solid rgba(194,156,83,.25); padding-top: 10px; }
   .view .worldstatus { position: absolute; right: 10px; bottom: 10px; background: rgba(15,18,22,.85); border: 1px solid var(--line);
     border-radius: 6px; padding: 3px 8px; font-size: 11px; color: var(--muted); max-width: 60%; z-index: 2; }
   /* whole-map mode */
@@ -211,7 +224,7 @@
   .view .floattext.order { color: #ff8f6a; font-size: 12px; }
   .view .floattext.cull { color: #ff3a2a; font-size: 20px; letter-spacing: .08em; }
   .view .floattext.stun { color: #fff6a0; font-size: 18px; }
-  .view.targeting canvas { cursor: crosshair; }
+  .view.targeting .surface { cursor: crosshair; }
   .view:has(.battlehud) .toasts { top: 100px !important; }
   .view:has(.battlehud) .maplegend { top: 98px; }
   .view:has(.battlehud):has(.maplegend) .toasts { top: 160px !important; }
@@ -443,6 +456,8 @@ class View {
       + `<option value="walk:bot_bad">Walk bot — Dire</option></optgroup></select>`
       + `<button class="btn mute" title="Mute this view">🔊</button></div>`
       + `<div class="worldstatus" hidden></div>`
+      + `<div class="loading" hidden><div class="ld-box"><div class="ld-spin"></div><div class="ld-title"></div>`
+      + `<div class="ld-status"></div><div class="ld-tip"></div></div></div>`
       + `<div class="msg">Pick a model on the left</div><div class="info" hidden></div><div class="timeline" hidden><div></div></div>`
       + `<div class="toasts"></div>`
       + `<div class="blendctl" hidden><span class="bn"></span><input type="range" min="0" max="1" step="0.01"><span class="bv"></span></div>`;
@@ -475,9 +490,7 @@ class View {
     this.msg = this.el.querySelector('.msg');
     this.info = this.el.querySelector('.info');
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer = viewRenderer(this);
     this.el.prepend(this.renderer.domElement);
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0f1216);
@@ -511,6 +524,29 @@ class View {
     this.sockets = {};
     // the HUD follows whichever view you last interacted with
     this.el.addEventListener('pointerdown', () => { if (hud.view !== this) hud.bind(this); }, true);
+  }
+
+  // A loading screen over the view until it is really ready (no half-built scenes popping in). Short loads
+  // never show it: it appears only after 200 ms, and fades out when done.
+  showLoading(title, status = '') {
+    const ld = this.el.querySelector('.loading');
+    ld.querySelector('.ld-title').textContent = title;
+    ld.querySelector('.ld-status').textContent = status;
+    ld.querySelector('.ld-tip').textContent = '💡 ' + LOADING_TIPS[Math.floor(Math.random() * LOADING_TIPS.length)];
+    this.loadingToken = Symbol();
+    const token = this.loadingToken;
+    clearTimeout(this.loadingTimer);
+    this.loadingTimer = setTimeout(() => { if (token === this.loadingToken) { ld.hidden = false; requestAnimationFrame(() => ld.classList.add('on')); } }, 200);
+    return token;
+  }
+  loadingStatus(text) { this.el.querySelector('.loading .ld-status').textContent = text; }
+  hideLoading(token) {
+    if (token && token !== this.loadingToken) return; // a newer load owns the screen
+    clearTimeout(this.loadingTimer);
+    this.loadingToken = null;
+    const ld = this.el.querySelector('.loading');
+    ld.classList.remove('on');
+    setTimeout(() => { if (!this.loadingToken) ld.hidden = true; }, 300);
   }
 
   // drop textures of other builds from this view's cache (they are re-decoded if you switch back)
@@ -665,6 +701,11 @@ class View {
   }
 
   async load(path) {
+    const ldTok = this.showLoading(path.split('/').pop().replace(/\.mdl$/, '').replace(/_/g, ' '), builds.find((b) => b.key === this.build)?.label || this.build);
+    try { return await this.loadModel(path); } finally { if (!this.worldMode || this.world) this.hideLoading(ldTok); }
+  }
+
+  async loadModel(path) {
     const build = this.build;
     const token = (this.token = Symbol());
     this.msg.textContent = 'Loading…';
@@ -1148,12 +1189,20 @@ class View {
     }
     const build = this.build;
     this.worldStatus.hidden = false;
-    const status = (t) => { if (token === this.worldToken) this.worldStatus.textContent = `${builds.find((b) => b.key === build)?.label.slice(0, 10)} map · ${t}`; };
+    const status = (t) => {
+      if (token !== this.worldToken) return;
+      this.worldStatus.textContent = `${builds.find((b) => b.key === build)?.label.slice(0, 10)} map · ${t}`;
+      this.loadingStatus(t);
+    };
+    const modeName = mode === 'map' ? 'whole map' : mode === 'battle' ? 'creep battle' : mode.startsWith('walk:') ? 'lane walk' : mode;
+    const ldTok = this.showLoading(`${builds.find((b) => b.key === build)?.label.slice(0, 10)} · ${modeName}`, 'loading…');
     status('loading…');
     let world;
     try { world = await loadWorld(build, tryFile, status); }
-    catch (e) { status('could not load: ' + e.message); return; }
+    catch (e) { status('could not load: ' + e.message); this.hideLoading(ldTok); return; }
     if (token !== this.worldToken) return;
+    // the screen stays until every prop is placed (a cached map is ready at once), at most 30 s
+    Promise.race([world.ready, new Promise((r) => setTimeout(r, 30000))]).then(() => { if (token === this.worldToken) this.hideLoading(ldTok); });
     const container = new THREE.Group();
     container.rotation.x = -Math.PI / 2; // Source Z-up -> Y-up
     container.add(world.group.clone());
@@ -1175,7 +1224,7 @@ class View {
     }
     if (mode.startsWith('walk:')) {
       const key = mode.slice(5), pts = world.lanes[key];
-      if (!pts) { status(`this map has no ${key.replace('_', ' ')} lane waypoints`); return; }
+      if (!pts) { status(`this map has no ${key.replace('_', ' ')} lane waypoints`); this.hideLoading(ldTok); return; }
       route = world.sampleRoute(pts);
       const [a, b] = [route[0], route[Math.min(4, route.length - 1)]];
       spot = { pos: [...a], yaw: THREE.MathUtils.radToDeg(Math.atan2(b[1] - a[1], b[0] - a[0])),
@@ -2089,6 +2138,21 @@ const audioCatalog = (build) => (catalogs[build] ||= api(`/api/audio?build=${bui
 
 // ------------------------------------------------------------ audio drawer
 const adState = { tab: 'music', build: null, ambience: null };
+// one of these is shown on each loading screen
+const LOADING_TIPS = [
+  "Depot 883, labelled 'Source SDK 2007', is Valve's 2010 Dota 2 development tree — with server.dll, the Game Coordinator and bots.",
+  "January 2011's 'Roshan' is the lane wizard model scaled up twice.",
+  'From 2011-01-25 to 2011-09-10 every Radiant lane had a stray duplicate waypoint back in the Radiant base.',
+  "Dota 2's 2011 versions jump 6.70 → 6.72 at Valve's parity patches; DotA's letter releases were never Dota 2 versions.",
+  'July–September 2011 maps carry a blue-purple tint on terrain layer 4 — toggle "terrain tints" to compare.',
+  "Berserker's Call armor: 5/10/15/20 in January 2011, a flat 30 in July, 40 in 6.84.",
+  "6.84's mid river moved: the old midpoint between the fountains sits inside the Dire tower's range.",
+  'The 2010 ability icons are placeholder text cards.',
+  "Dota's props have no lower levels of detail — Valve relied on the fixed top-down camera.",
+  "Axe's model was remade four times during 2011.",
+  'Press H for the controls of the current mode, 1–4 to switch modes, L to hide the model list.',
+  'The 2010 server.dll has dota_start_ai_game and dota_bot_populate.',
+];
 const escHtml = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 function refreshNowPlaying() {
@@ -2457,6 +2521,47 @@ class Actor {
 
 let views = [];
 let syncing = false;
+
+// One WebGL context draws every view, each into its own scissored region of a canvas behind the views, so
+// maps, models and textures are uploaded to the GPU once instead of once per view. Each view gets a
+// lightweight stand-in with the parts of the WebGLRenderer API the viewer uses, and a transparent "surface"
+// element for mouse input.
+const sharedGL = new THREE.WebGLRenderer({ antialias: true });
+sharedGL.setPixelRatio(Math.min(devicePixelRatio, 2));
+sharedGL.outputColorSpace = THREE.SRGBColorSpace;
+sharedGL.setScissorTest(true);
+sharedGL.domElement.className = 'shared-gl';
+function resizeShared() {
+  const host = document.getElementById('views');
+  if (sharedGL.domElement.parentNode !== host) host.prepend(sharedGL.domElement);
+  const r = host.getBoundingClientRect();
+  const size = sharedGL.getSize(new THREE.Vector2());
+  if (Math.round(size.x) !== Math.round(r.width) || Math.round(size.y) !== Math.round(r.height)) sharedGL.setSize(r.width, r.height, false);
+}
+function viewRenderer(view) {
+  const el = document.createElement('div');
+  el.className = 'surface';
+  return {
+    domElement: el,
+    get info() { return sharedGL.info; },
+    getContext: () => sharedGL.getContext(),
+    getPixelRatio: () => sharedGL.getPixelRatio(),
+    setPixelRatio() {},
+    setSize: () => resizeShared(),
+    setRenderTarget: (t) => sharedGL.setRenderTarget(t),
+    readRenderTargetPixels: (...a) => sharedGL.readRenderTargetPixels(...a),
+    dispose() { el.remove(); },
+    render(scene, camera) {
+      if (sharedGL.getRenderTarget()) { sharedGL.render(scene, camera); return; } // e.g. the minimap snapshot
+      const host = sharedGL.domElement.getBoundingClientRect(), r = view.el.getBoundingClientRect();
+      const x = r.left - host.left, y = host.bottom - r.bottom, w = r.width, h = r.height;
+      if (w < 1 || h < 1) return;
+      sharedGL.setViewport(x, y, w, h);
+      sharedGL.setScissor(x, y, w, h);
+      sharedGL.render(scene, camera);
+    },
+  };
+}
 const heldKeys = new Set();
 const pref = (k, d) => { try { const v = localStorage.getItem('da-' + k); return v === null ? d : v === '1'; } catch { return d; } };
 const setPref = (k, v) => { try { localStorage.setItem('da-' + k, v ? '1' : '0'); } catch { /* storage may be blocked */ } };

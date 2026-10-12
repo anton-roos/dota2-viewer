@@ -169,3 +169,13 @@ overview, where per-cell meshes would only add draw calls. `View.updateDetail()`
 (> 5000 = far) and hides small decorations (`userData.detail`, bounding radius < 120) when far.
 Measured per view on a GTX 1060 (GPU time, forced with a 1-px readPixels): overview 9–12 ms → 5 ms,
 battle / world ~9 ms → 3–4 ms, map zoomed in → 2.5 ms.
+
+### One WebGL context for all views; loading screens
+- `sharedGL` (index.html) is the only WebGLRenderer. Its canvas (`.shared-gl`) sits behind the views; each view
+  draws into its own scissored region via `viewRenderer(view)`, a stand-in exposing the API the viewer uses
+  (`render`, `domElement` = a transparent `.surface` div for input, `info`, `getContext`, `setRenderTarget`,
+  `readRenderTargetPixels`). Render-target renders (minimap snapshot) pass straight through.
+- `View.showLoading(title, status)` / `loadingStatus()` / `hideLoading(token)`: a per-view loading screen that
+  appears after 200 ms (short loads never flash it) and fades out. World modes keep it until `world.ready`
+  (all props placed), at most 30 s; model loads until the model is built. Tips come from `LOADING_TIPS`.
+- Source LODs were checked and are not an option: Dota's props ship a single LOD (2011 and 6.84).
