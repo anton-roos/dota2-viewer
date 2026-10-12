@@ -14,7 +14,7 @@
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
     font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
   #app { display: grid; grid-template-columns: 300px 1fr; height: 100%; position: relative; }
-  #audioDrawer { position: absolute; right: 0; top: 41px; bottom: 0; width: 380px; z-index: 20; background: var(--panel);
+  #audioDrawer { position: absolute; right: 0; top: 72px; bottom: 0; width: 380px; z-index: 20; background: var(--panel);
     border-left: 1px solid var(--line); display: flex; flex-direction: column; box-shadow: -8px 0 24px rgba(0,0,0,.4); }
   #audioDrawer .ad-head { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); }
   #audioDrawer .ad-head select { flex: 1; width: auto; }
@@ -62,9 +62,74 @@
   #list .tag { float: right; font-size: 10px; color: var(--accent2); margin-left: 6px; }
   #count { padding: 6px 14px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--line); }
   main { display: grid; grid-template-rows: auto 1fr; min-width: 0; min-height: 0; }
-  .toolbar { display: flex; gap: 14px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line);
-    background: var(--panel); flex-wrap: wrap; }
-  .toolbar label { display: flex; gap: 6px; align-items: center; text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--text); }
+  /* top bar: mode tabs + global controls (Dota-style slate and bronze) */
+  main { grid-template-rows: auto auto 1fr !important; position: relative; }
+  .topbar { display: flex; align-items: stretch; gap: 10px; padding: 0 10px 0 0; height: 40px;
+    background: linear-gradient(#1c1f23, #131518); border-bottom: 1px solid #483920; box-shadow: 0 1px 0 rgba(194,156,83,.18); }
+  .tabs { display: flex; align-items: stretch; }
+  .tabs button { background: none; border: 0; border-right: 1px solid rgba(255,255,255,.04); color: #9a9180; padding: 0 18px;
+    font: 600 12px/1 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; position: relative; }
+  .tabs button:hover { color: #e8dcc0; background: rgba(255,255,255,.03); }
+  .tabs button.on { color: #f2e6c8; background: linear-gradient(rgba(194,156,83,.08), rgba(194,156,83,.18)); }
+  .tabs button.on::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px;
+    background: linear-gradient(90deg, #483920, #c29c53, #483920); }
+  .tb-spacer { flex: 1; }
+  .tb-group { display: flex; gap: 6px; align-items: center; padding: 0 8px; border-left: 1px solid rgba(255,255,255,.05); }
+  .topbar > .btn { align-self: center; }
+  .topbar select, .ctxbar select { width: auto; padding: 3px 6px; font-size: 12px; }
+  .topbar input[type=range] { width: 80px; }
+  .btn.icon { padding: 3px 8px; min-width: 30px; }
+  .tb-label, .tb-check, .ctxbar label { display: flex; gap: 6px; align-items: center; text-transform: none; letter-spacing: 0;
+    font-size: 12px; color: var(--text); }
+  .tb-label { color: var(--muted); }
+  /* context strip: only the current mode's controls */
+  .ctxbar { display: flex; gap: 16px; align-items: center; padding: 5px 14px; min-height: 30px; flex-wrap: wrap;
+    background: var(--panel); border-bottom: 1px solid var(--line); }
+  .ctxbar label { color: var(--muted); }
+  .ctxbar label b { color: var(--text); min-width: 16px; }
+  .ctxbar input[type=range] { width: 100px; }
+  .ctxbar [data-show] { display: none !important; }
+  body[data-mode=studio] .ctxbar [data-show~=studio], body[data-mode=world] .ctxbar [data-show~=world],
+  body[data-mode=map] .ctxbar [data-show~=map], body[data-mode=battle] .ctxbar [data-show~=battle] { display: flex !important; }
+  .ctx-hint { margin-left: auto; color: var(--muted); font-size: 11px; }
+  /* settings menu and help overlay */
+  .pop { position: absolute; right: 44px; top: 42px; z-index: 30; display: grid; gap: 8px; padding: 12px 14px; min-width: 240px;
+    background: #16181b; border: 1px solid #483920; outline: 1px solid rgba(194,156,83,.35); border-radius: 4px; box-shadow: 0 8px 24px rgba(0,0,0,.55); }
+  .pop-title { font: 600 11px/1 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #c29c53; margin-bottom: 2px; }
+  .help { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(5,6,8,.6); }
+  .help-card { width: min(640px, 92%); max-height: 86%; overflow: auto; padding: 18px 22px; background: #16181b;
+    border: 1px solid #483920; outline: 1px solid rgba(194,156,83,.35); border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+  .help-card h2 { margin: 0 0 4px; font: 600 13px/1.2 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #c29c53; }
+  .help-card h3 { margin: 14px 0 6px; font-size: 12px; color: #e8dcc0; }
+  .help-card table { width: 100%; border-collapse: collapse; }
+  .help-card td { padding: 3px 0; vertical-align: top; font-size: 12px; }
+  .help-card td:first-child { width: 42%; color: var(--muted); }
+  .help-card kbd { display: inline-block; min-width: 16px; padding: 0 5px; border: 1px solid #3a3f46; border-bottom-width: 2px; border-radius: 3px;
+    background: #1f2328; font: 11px/16px ui-monospace, Consolas, monospace; color: #e8dcc0; text-align: center; }
+  .help-card .close { float: right; }
+  /* model list toggle */
+  .sidebar-toggle { background: none; border: 0; border-right: 1px solid rgba(255,255,255,.05); color: #9a9180; width: 40px;
+    font-size: 16px; cursor: pointer; }
+  .sidebar-toggle:hover { color: #f2e6c8; background: rgba(255,255,255,.04); }
+  body.no-sidebar .sidebar-toggle { color: #c29c53; }
+  #app { transition: grid-template-columns .2s ease; }
+  body.no-sidebar #app { grid-template-columns: 0 1fr; }
+  body.no-sidebar #app > aside:first-child { overflow: hidden; border-right: 0; }
+  /* first-visit hints */
+  .coach { position: absolute; inset: 0; z-index: 35; pointer-events: none; }
+  .coach-tip { position: absolute; max-width: 300px; padding: 8px 11px; font-size: 12px; line-height: 1.45; color: #e8dcc0;
+    background: #1d1a14; border: 1px solid #c29c53; border-radius: 4px; box-shadow: 0 6px 18px rgba(0,0,0,.6); pointer-events: auto; }
+  .coach-tip b { color: #f2c46a; }
+  .coach-tip::before { content: ''; position: absolute; top: -7px; width: 12px; height: 12px; background: #1d1a14;
+    border-left: 1px solid #c29c53; border-top: 1px solid #c29c53; transform: rotate(45deg); }
+  .coach .tabs-tip { left: 230px; top: 48px; } .coach .tabs-tip::before { left: 60px; }
+  .coach .list-tip { left: 6px; top: 48px; max-width: 200px; } .coach .list-tip::before { left: 10px; }
+  .coach .help-tip { right: 8px; top: 48px; } .coach .help-tip::before { right: 12px; }
+  .coach .coach-ok { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: auto;
+    padding: 8px 22px; font-size: 13px; border-color: #c29c53; background: #2a2318; }
+  .coach kbd { padding: 0 4px; border: 1px solid #5a4a2a; border-radius: 3px; background: #2a2318; font: 11px ui-monospace, Consolas, monospace; }
+  /* per-view location menus are replaced by the tabs */
+  .view .head select.worldsel { display: none; }
   #views { display: grid; grid-template-columns: repeat(var(--n, 2), 1fr); min-height: 0; position: relative; }
   #views.has-hud .view .info { bottom: 132px; max-height: 30%; }
   #views.has-hud .view .worldstatus { bottom: 132px; }
@@ -137,6 +202,8 @@
   .view .battlehud .lh { color: #ffd76a; } .view .battlehud .dn { color: #9fd0ff; } .view .battlehud .g { color: #ffcf40; }
   .view .battlehud .dead { color: #ff6a52; }
   .view .battlehud .row.note { color: #8a8170; font-size: 10px; cursor: help; }
+  .view .battlehud { max-width: calc(100% - 20px); overflow: hidden; }
+  .view .battlehud .row { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .view .floattext { position: absolute; left: 0; top: 0; pointer-events: none; font: 700 16px/1 system-ui, sans-serif; color: #ffd24a;
     text-shadow: 0 1px 2px #000, 0 0 6px #000; z-index: 4; white-space: nowrap; }
   .view .floattext.deny { color: #9fd0ff; font-size: 22px; }
@@ -157,6 +224,20 @@
   .view .stats { position: absolute; left: 10px; top: 96px; width: 290px; max-height: calc(100% - 300px); min-height: 120px;
     overflow: auto; background: rgba(15,18,22,.88); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
   .view .stats .sh { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+  .view .stats .sh { cursor: pointer; }
+  .view .stats .sh::after { content: '▾'; margin-left: auto; color: var(--muted); }
+  .view .stats.folded { min-height: 0; }
+  .view .stats.folded > :not(.sh) { display: none; }
+  .view .stats.folded .sh { margin: 0; }
+  .view .stats.folded .sh::after { content: '▸'; }
+  /* model details: one summary line, opens on click */
+  .view .info { max-height: 40%; }
+  .view .info .info-sum { cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .view .info .info-sum .chev::after { content: ' ▸'; color: var(--muted); }
+  .view .info.open .info-sum .chev::after { content: ' ▾'; }
+  .view .info:not(.open) .info-body { display: none; }
+  .view .info:not(.open) { right: auto; max-width: 60%; padding: 5px 10px; }
+  .view .info .info-body { margin-top: 4px; }
   .view .stats .portrait { width: 64px; height: 36px; object-fit: cover; border-radius: 4px; background: #222; }
   .view .stats .sn { font-weight: 700; font-size: 14px; }
   .view .stats .k { color: var(--muted); }
@@ -249,33 +330,76 @@
     <div id="adCount" class="hint"></div>
   </aside>
   <main>
-    <div class="toolbar">
-      <label><input type="checkbox" id="optTex" checked> textures</label>
-      <label><input type="checkbox" id="optWire"> wireframe</label>
-      <label><input type="checkbox" id="optSync" checked> sync cameras</label>
-      <label><input type="checkbox" id="optSpin"> turntable</label>
-      <span class="sep"></span>
-      <button id="optPlay" class="btn" title="Play / pause (space)">⏸ pause</button>
-      <label>speed <select id="optSpeed" style="width:auto"><option value="0.1">0.1×</option><option value="0.25">0.25×</option>
-        <option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
-      <label><input type="checkbox" id="optSyncSeq" checked> sync animations</label>
-      <label><input type="checkbox" id="optLoopAll" checked> repeat one-shots</label>
-      <span class="sep"></span>
-      <button id="optMap" class="btn" title="Whole map in every view: fly over the map, landmarks, lanes and a minimap (click again to leave)">🗺 map</button>
-      <label title="Per-vertex colour tints stored with each terrain layer in the map (July–Sept 2011 maps carry a blue-purple tint on layer 4)"><input type="checkbox" id="optTints" checked> terrain tints</label>
-      <label title="Time of day for world mode (map lighting zones, fog, day/night soundscapes)">time
-        <select id="optTod" style="width:auto"><option value="day">day</option><option value="dusk">dusk</option><option value="night">night</option><option value="dawn">dawn</option></select></label>
-      <label><input type="checkbox" id="optStats" checked> stats</label>
-      <label title="Panorama-style hero HUD for the view you last clicked; Q/W/E/R cast abilities"><input type="checkbox" id="optHud" checked> HUD</label>
-      <label title="Hero level used for the stats panels">level <input id="optLevel" type="range" min="1" max="25" value="1" style="width:90px"> <b id="optLevelVal">1</b></label>
-      <span class="sep"></span>
-      <button id="optSound" class="btn" title="Browsers only allow audio after a click">🔇 sound off</button>
-      <button id="optAudio" class="btn" title="Music, announcer, ambient soundscapes and UI sounds">♫ audio</button>
-      <label title="Heroes say a fitting voice line when an animation starts"><input type="checkbox" id="optVoice" checked> voice reactions</label>
-      <label title="Play the build's map music in world mode (2011: dota.mp3, 6.84: layered laning theme)"><input type="checkbox" id="optWorldMusic" checked> world music</label>
-      <label title="World mode: Roshan in his pit and a creep wave marching with you when walking a lane"><input type="checkbox" id="optActors" checked> creeps</label>
-      <input id="optVol" type="range" min="0" max="1" step="0.05" value="0.7" title="Volume" style="width:80px">
-      <label>views <select id="optViews" style="width:auto"><option>1</option><option selected>2</option><option>3</option></select></label>
+    <div class="topbar">
+      <button id="btnSidebar" class="sidebar-toggle" title="Show / hide the model list (L)">☰</button>
+      <nav class="tabs" id="modeTabs">
+        <button data-mode="studio" class="on" title="Heroes and models up close (1)">Studio</button>
+        <button data-mode="world" title="Stand in the build's map: spawns, mid, Roshan, walk a lane (2)">World</button>
+        <button data-mode="map" title="The whole map from above, with landmarks, lanes and a minimap (3)">Map</button>
+        <button data-mode="battle" title="Creep waves fighting — with your hero (4)">Battle</button>
+      </nav>
+      <div class="tb-spacer"></div>
+      <div class="tb-group" title="Play / pause (Space)">
+        <button id="optPlay" class="btn icon">⏸</button>
+        <select id="optSpeed" title="Speed"><option value="0.1">0.1×</option><option value="0.25">0.25×</option>
+          <option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+      </div>
+      <div class="tb-group">
+        <label class="tb-label" title="Side-by-side views to compare builds">views
+          <select id="optViews"><option>1</option><option selected>2</option><option>3</option></select></label>
+        <label class="tb-check" title="Views move their cameras together"><input type="checkbox" id="optSync" checked> sync</label>
+      </div>
+      <div class="tb-group">
+        <button id="optSound" class="btn icon" title="Sound on / off (browsers only allow audio after a click)">🔇</button>
+        <input id="optVol" type="range" min="0" max="1" step="0.05" value="0.7" title="Volume">
+      </div>
+      <button id="optAudio" class="btn" title="Music, announcer, ambient soundscapes and UI sounds">♫ Audio</button>
+      <button id="btnSettings" class="btn icon" title="Settings">⚙</button>
+      <button id="btnHelp" class="btn icon" title="Controls (H)">?</button>
+    </div>
+    <div class="ctxbar">
+      <label data-show="world" title="Where in the map the hero stands">location
+        <select id="worldLoc">
+          <option value="mid" selected>Mid lane, river</option><option value="radiant">Radiant spawn</option>
+          <option value="dire">Dire spawn</option><option value="roshan">Roshan's pit</option>
+          <optgroup label="walk a lane (hero's move speed)">
+            <option value="walk:mid_good">Walk mid — Radiant → Dire</option><option value="walk:mid_bad">Walk mid — Dire → Radiant</option>
+            <option value="walk:top_good">Walk top — Radiant</option><option value="walk:top_bad">Walk top — Dire</option>
+            <option value="walk:bot_good">Walk bot — Radiant</option><option value="walk:bot_bad">Walk bot — Dire</option></optgroup>
+        </select></label>
+      <label data-show="battle" title="Where the creep waves fight">battle
+        <select id="battleLanes"><option value="mid" selected>Mid lane, close up</option><option value="all">All three lanes, on the map</option></select></label>
+      <button data-show="battle" id="battleRestart" class="btn" title="Start the battle again from wave 1">↻ restart</button>
+      <label data-show="studio world map battle" title="Hero level for stats, HUD and battles">level
+        <input id="optLevel" type="range" min="1" max="25" value="1"> <b id="optLevelVal">1</b></label>
+      <label data-show="world map battle" title="Time of day: the map's lighting zones, fog and day/night soundscapes">time
+        <select id="optTod"><option value="day">day</option><option value="dusk">dusk</option><option value="night">night</option><option value="dawn">dawn</option></select></label>
+      <label class="tb-check" data-show="studio" title="Hero stats panel"><input type="checkbox" id="optStats" checked> stats</label>
+      <label class="tb-check" data-show="studio world battle" title="Panorama-style hero HUD; Q/W/E/R cast"><input type="checkbox" id="optHud" checked> HUD</label>
+      <label class="tb-check" data-show="studio" title="Spin the model slowly"><input type="checkbox" id="optSpin"> turntable</label>
+      <label class="tb-check" data-show="world battle map" title="Roshan in his pit, creep waves when walking a lane, and battles"><input type="checkbox" id="optActors" checked> creeps</label>
+      <label class="tb-check" data-show="world map battle" title="Per-vertex colour tints stored in the map (July–Sept 2011 maps carry a blue-purple layer-4 tint)"><input type="checkbox" id="optTints" checked> terrain tints</label>
+      <span class="ctx-hint" data-show="studio">left-drag rotate · middle/right-drag pan · wheel zoom · Q W E R cast · H help</span>
+      <span class="ctx-hint" data-show="world map">middle-drag moves the terrain · left-drag rotate · arrows / screen edge pan · F1 hero · H help</span>
+      <span class="ctx-hint" data-show="battle">right-click move · attack · deny · Q W E R abilities · S stop · F1 hero · H help</span>
+    </div>
+    <div class="pop" id="settingsPop" hidden>
+      <div class="pop-title">Settings</div>
+      <label class="tb-check"><input type="checkbox" id="optTex" checked> textures</label>
+      <label class="tb-check"><input type="checkbox" id="optWire"> wireframe</label>
+      <label class="tb-check"><input type="checkbox" id="optSyncSeq" checked> sync animations between views</label>
+      <label class="tb-check"><input type="checkbox" id="optLoopAll" checked> repeat one-shot animations</label>
+      <label class="tb-check"><input type="checkbox" id="optVoice" checked> voice reactions</label>
+      <label class="tb-check"><input type="checkbox" id="optWorldMusic" checked> world music</label>
+      <label class="tb-check"><input type="checkbox" id="optEdgePan" checked> screen-edge panning (world modes)</label>
+    </div>
+    <div class="help" id="helpOverlay" hidden><div class="help-card"></div></div>
+    <div class="coach" id="coach" hidden>
+      <div class="coach-tip tabs-tip"><b>Modes</b> — Studio for models up close, World to stand in the map, Map for the overview,
+        Battle to fight with creeps. Keys <kbd>1</kbd>–<kbd>4</kbd>.</div>
+      <div class="coach-tip list-tip"><b>Model list</b> — <kbd>☰</kbd> or <kbd>L</kbd> hides it for more room.</div>
+      <div class="coach-tip help-tip"><b>Controls</b> — every mode has its own; press <kbd>H</kbd> or <kbd>?</kbd> to see them.</div>
+      <button class="btn coach-ok" id="coachOk">Got it — click anywhere to close</button>
     </div>
     <div id="views"></div>
   </main>
@@ -285,11 +409,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildModel, materialPaths, parseVMT, parseVTF, decodeSequence, texturePath } from './source.js?v=9';
-import { loadWorld, trimWorlds, setTerrainTints } from './world.js?v=18';
+import { loadWorld, trimWorlds, setTerrainTints } from './world.js?v=20';
 import { AnimationEventManager } from './AnimationEventManager.js?v=1';
 import { ParticleSystem, presetForEffect } from './particles.js?v=2';
 import { Hud } from './hud.js?v=3';
-import { MapMode } from './mapview.js?v=4';
+import { MapMode } from './mapview.js?v=5';
 import { Battle } from './battle.js?v=9';
 
 const $ = (s) => document.querySelector(s);
@@ -361,6 +485,12 @@ class View {
     this.camera.position.set(220, 140, 220);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
+    // pointer position for screen-edge panning
+    this.pointer = { x: 0, y: 0, inside: false, edgeT: 0 };
+    this.renderer.domElement.addEventListener('pointermove', (e) => { const r = this.renderer.domElement.getBoundingClientRect(); Object.assign(this.pointer, { x: e.clientX - r.left, y: e.clientY - r.top, inside: true }); });
+    this.renderer.domElement.addEventListener('pointerleave', () => { this.pointer.inside = false; });
+    this.renderer.domElement.addEventListener('pointerdown', () => { this.pointer.dragging = true; });
+    addEventListener('pointerup', () => { this.pointer.dragging = false; });
     this.controls.addEventListener('change', () => syncFrom(this));
 
     this.hemi = new THREE.HemisphereLight(0xdfe8ff, 0x302822, 1.6); this.scene.add(this.hemi);
@@ -617,7 +747,8 @@ class View {
 
     this.msg.hidden = true;
     this.fitSize = Math.max(size.x, size.y, size.z) || 100;
-    if (this.worldMode) { if (!this.framed) this.frameOnHero(true); }
+    if (this.mapMode || this.worldMode === 'battle') { /* these modes set their own camera */ }
+    else if (this.worldMode) { if (!this.framed) this.frameOnHero(true); }
     else if (!this.framed || !$('#optSync').checked) this.frame(bbox);
 
     const tris = model.meshes.reduce((s, m) => s + m.idx.length / 3, 0);
@@ -628,13 +759,21 @@ class View {
     }).join('');
     const seq = model.mdl.sequences;
     this.info.innerHTML = `
-      <div><b>${builds.find((b) => b.key === build)?.label}</b></div>
+      <div class="info-sum" title="Model details — click to open or close">ⓘ <b>${escHtml(path.split("/").pop())}</b>
+        <span class="k">· ${tris.toLocaleString()} triangles · ${seq.length} animations · MDL v${model.mdl.version}</span><span class="chev"></span></div>
+      <div class="info-body">
       <div><span class="k">vertices</span> ${model.vertexCount.toLocaleString()} · <span class="k">triangles</span> ${tris.toLocaleString()}
         · <span class="k">bones</span> ${model.mdl.numBones} · <span class="k">MDL</span> v${model.mdl.version} · <span class="k">up</span> <span class="up">${this.upAxis}</span>
         · <span class="k">size</span> ${size.x.toFixed(0)}×${size.y.toFixed(0)}×${size.z.toFixed(0)}</div>
       <div><span class="k">animations (${seq.length})</span> ${seq.slice(0, 18).join(', ')}${seq.length > 18 ? '…' : ''}</div>
       <div><span class="k">unit</span> ${this.unit ? `${this.unit.unit} · <span class="k">SoundSet</span> ${this.unit.soundSet || '—'}` : 'no npc entry uses this model'}</div>
-      ${texRows}`;
+      ${texRows}</div>`;
+    this.info.classList.toggle('open', pref('info-open', false));
+    this.info.querySelector('.info-sum').onclick = () => {
+      const open = !this.info.classList.contains('open');
+      setPref('info-open', open);
+      for (const v of views) v.info.classList.toggle('open', open);
+    };
     this.info.hidden = false;
 
     // sequences
@@ -678,6 +817,14 @@ class View {
     }
     const panel = document.createElement('div');
     panel.className = 'stats';
+    panel.classList.toggle('folded', pref('stats-folded', false));
+    // the header (portrait + name) folds the panel; every view follows
+    panel.addEventListener('click', (e) => {
+      if (!e.target.closest('.sh')) return;
+      const folded = !panel.classList.contains('folded');
+      setPref('stats-folded', folded);
+      for (const v of views) v.statsPanel?.classList.toggle('folded', folded);
+    });
     panel.hidden = !$('#optStats').checked;
     this.el.append(panel);
     this.statsPanel = panel;
@@ -996,7 +1143,7 @@ class View {
       this.applyLighting();
       this.worldStatus.hidden = true;
       this.framed = false;
-      if (this.model) this.frameOnHero(false);
+      if (this.model) { this.root.updateWorldMatrix(true, true); this.frame(new THREE.Box3().setFromObject(this.root)); } // back to the studio framing
       return;
     }
     const build = this.build;
@@ -1154,7 +1301,7 @@ class View {
       + `<div class="row hero"><label>your hero <select class="team"><option value="radiant">fights for Radiant</option>`
       + `<option value="dire">fights for Dire</option><option value="">watches</option></select></label><span class="hs"></span></div>`
       + `<div class="row note" title="The real 2011 game logic ran on Valve's servers and never shipped. Unit, hero and ability numbers come from this build's own files; targeting, damage types and wave timing are approximations of Dota's rules.">`
-      + `approximate simulation · numbers from this build's npc files · right-click: move / attack / deny · S: stop · Q W E R: abilities (Axe, Sven, Lina, Zeus, Shadow Fiend; Juggernaut's Blade Fury, Pudge's Rot)</div>`;
+      + `ⓘ approximate simulation · numbers from this build's files · abilities: Axe, Sven, Lina, Zeus, Shadow Fiend, Juggernaut's Blade Fury, Pudge's Rot</div>`;
     this.el.append(this.battleHud);
     const teamSel = this.battleHud.querySelector('select.team');
     teamSel.onchange = () => this.joinBattle(teamSel.value);
@@ -1222,8 +1369,6 @@ class View {
   setHeroControls(on) {
     const c = this.controls, cv = this.renderer.domElement;
     if (on && !this.heroInput) {
-      this.savedButtons = { ...c.mouseButtons };
-      c.mouseButtons = { ...c.mouseButtons, RIGHT: null, MIDDLE: this.mapMode ? THREE.MOUSE.ROTATE : THREE.MOUSE.DOLLY };
       const onDown = (e) => { if (e.button === 2) this.heroOrder(e); };
       const onKey = (e) => {
         if (e.code !== 'KeyS' || /input|select|textarea/i.test(e.target.tagName) || !this.battle?.hero) return;
@@ -1256,7 +1401,6 @@ class View {
     } else if (!on && this.heroInput) {
       this.heroInput();
       this.heroInput = null;
-      if (this.savedButtons) c.mouseButtons = this.savedButtons;
     }
   }
 
@@ -1685,7 +1829,70 @@ class View {
     if (head) head.style.left = (a.cycle * 100).toFixed(2) + '%';
   }
 
+  // Mouse scheme, the same in every mode: middle-drag grabs and moves (in a world: along the ground, like
+  // Dota), left-drag rotates, wheel zooms (toward the cursor in a world); right-drag pans, except while the
+  // hero fights, when right-click gives orders.
+  applyControls() {
+    const world = !!this.worldMode, fighting = !!this.battle?.hero;
+    const key = `${world}|${fighting}`;
+    if (key === this.controlsKey) return;
+    this.controlsKey = key;
+    const c = this.controls;
+    c.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: fighting ? null : THREE.MOUSE.PAN };
+    c.screenSpacePanning = !world;
+    c.zoomToCursor = world;
+  }
+
+  // arrow keys and the screen edge pan the camera across the ground in world modes
+  panCamera(dt) {
+    if (!this.worldMode || this.mapMode) return; // the map mode flies with its own arrow-key handler
+    const p = this.pointer, r = this.renderer.domElement.getBoundingClientRect(), m = 14;
+    let dx = 0, dy = 0;
+    if (heldKeys.has('ArrowLeft')) dx -= 1; if (heldKeys.has('ArrowRight')) dx += 1;
+    if (heldKeys.has('ArrowUp')) dy += 1; if (heldKeys.has('ArrowDown')) dy -= 1;
+    if (dx || dy) { if (hud.view !== this && !this.el.matches(':hover')) { dx = dy = 0; } }
+    if (!dx && !dy && $('#optEdgePan').checked && p.inside && !p.dragging) {
+      const ex = p.x < m ? -1 : p.x > r.width - m ? 1 : 0, ey = p.y < m ? 1 : p.y > r.height - m ? -1 : 0;
+      p.edgeT = ex || ey ? p.edgeT + dt : 0;
+      if (p.edgeT > 0.15) { dx = ex; dy = ey; } // a short dwell, so crossing the edge doesn't pan
+    }
+    if (!dx && !dy) return;
+    const c = this.controls, cam = this.camera;
+    const fwd = c.target.clone().sub(cam.position).setY(0).normalize(), right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0));
+    const mv = fwd.multiplyScalar(dy).add(right.multiplyScalar(dx)).setLength(cam.position.distanceTo(c.target) * 1.1 * dt);
+    c.target.add(mv); cam.position.add(mv);
+    c.dispatchEvent({ type: 'change' });
+  }
+
+  // F1: look at the hero again (keeps the current viewing angle and distance)
+  centerOnHero() {
+    const c = this.controls, offset = this.camera.position.clone().sub(c.target);
+    const t = this.spin.position.clone().add(new THREE.Vector3(0, this.worldMode ? 90 : 0, 0));
+    if (this.mapMode) { this.mapMode.flyTo(t, Math.min(offset.length(), 2200)); return; }
+    c.target.copy(t); this.camera.position.copy(t).add(offset); c.update();
+    c.dispatchEvent({ type: 'change' });
+  }
+
+  // far from the ground (whole-map views) small decorations are sub-pixel: hide them to save ~15 % of the triangles
+  updateDetail() {
+    if (!this.worldObj) return;
+    const far = this.camera.position.distanceTo(this.controls.target) > 5000;
+    if (far === this.detailFar && this.detailObj === this.worldObj.children[0]) return;
+    this.detailFar = far;
+    this.detailObj = this.worldObj.children[0];
+    // far: whole-map meshes (few draw calls), small decorations hidden; near: per-cell meshes (off-screen cells culled)
+    this.worldObj.traverse((o) => {
+      const lod = o.userData.lod;
+      if (!lod) return;
+      const shown = lod === 'both' || (lod === 'whole') === far;
+      o.visible = shown && !(far && o.userData.detail);
+    });
+  }
+
   update(dt) {
+    this.applyControls();
+    this.updateDetail();
+    this.panCamera(dt);
     this.stepWalk(dt);
     this.mapMode?.update(dt);
     this.updateFloats(dt);
@@ -2250,6 +2457,12 @@ class Actor {
 
 let views = [];
 let syncing = false;
+const heldKeys = new Set();
+const pref = (k, d) => { try { const v = localStorage.getItem('da-' + k); return v === null ? d : v === '1'; } catch { return d; } };
+const setPref = (k, v) => { try { localStorage.setItem('da-' + k, v ? '1' : '0'); } catch { /* storage may be blocked */ } };
+addEventListener('keydown', (e) => { if (!/input|select|textarea/i.test(e.target.tagName) && e.code.startsWith('Arrow')) { heldKeys.add(e.code); e.preventDefault(); } });
+addEventListener('keyup', (e) => heldKeys.delete(e.code));
+addEventListener('blur', () => heldKeys.clear());
 let playing = true, speed = 1;
 let heroLevel = 1;
 
@@ -2375,6 +2588,7 @@ function layout() {
     views.push(v);
     $('#views').append(v.el);
     if (current) v.load(current);
+    if (mode !== 'studio') applyModeTo(v);
   }
   while (views.length > n) {
     const v = views.pop();
@@ -2435,7 +2649,7 @@ for (const c of document.querySelectorAll('#chips button')) c.onclick = () => {
 };
 $('#optTex').onchange = $('#optWire').onchange = () => views.forEach(applyOptions);
 $('#optViews').onchange = layout;
-const togglePlay = () => { playing = !playing; $('#optPlay').textContent = playing ? '⏸ pause' : '▶ play'; };
+const togglePlay = () => { playing = !playing; $('#optPlay').textContent = playing ? '⏸' : '▶'; };
 $('#optPlay').onclick = togglePlay;
 addEventListener('keydown', (e) => { if (e.code === 'Space' && !/input|select/i.test(e.target.tagName)) { e.preventDefault(); togglePlay(); } });
 $('#optSpeed').onchange = () => (speed = +$('#optSpeed').value);
@@ -2443,12 +2657,12 @@ async function unlockAudio() {
   await audio.ensure();
   if (!audio.enabled) {
     audio.enabled = true;
-    $('#optSound').textContent = '🔊 sound on';
+    $('#optSound').textContent = '🔊';
   }
 }
 $('#optSound').onclick = async () => {
   if (audio.enabled) {
-    audio.enabled = false; $('#optSound').textContent = '🔇 sound off';
+    audio.enabled = false; $('#optSound').textContent = '🔇';
     audio.stopMusic(); adState.ambience?.stop();
     for (const v of views) v.ambience?.stop();
     return;
@@ -2463,7 +2677,7 @@ $('#optAudio').onclick = async () => {
   const d = $('#audioDrawer');
   d.hidden = !d.hidden;
   if (!d.hidden) {
-    d.style.top = document.querySelector('.toolbar').offsetHeight + 'px'; // the toolbar can wrap
+    d.style.top = $('#views').getBoundingClientRect().top + 'px'; // below the top bar and context strip
     if (!adState.build) { adState.build = views[0]?.build || builds[0].key; $('#adBuild').value = adState.build; }
     await unlockAudio();
     renderAudioList();
@@ -2482,10 +2696,85 @@ $('#npLoop').onchange = () => { if (audio.music) { for (const s of audio.music.s
 $('#optWorldMusic').onchange = () => ($('#optWorldMusic').checked ? startWorldMusic() : (audio.music?.world && audio.stopMusic()));
 $('#npVol').oninput = () => { audio.musicVolume = +$('#npVol').value; if (audio.musicGain) audio.musicGain.gain.value = audio.musicVolume; };
 
-$('#optMap').onclick = () => {
-  const to = views.some((v) => v.worldMode !== 'map') ? 'map' : '';
-  views.forEach((v) => v.setWorld(to));
+// ------------------------------------------------------------ modes (tabs)
+let mode = 'studio';
+const modeLocation = () => (mode === 'world' ? $('#worldLoc').value : mode === 'map' ? 'map'
+  : mode === 'battle' ? ($('#battleLanes').value === 'all' ? 'map' : 'battle') : '');
+async function applyModeTo(v) {
+  await v.setWorld(modeLocation());
+  if (mode === 'battle' && $('#battleLanes').value === 'all' && v.mapMode && !v.battle && $('#optActors').checked) v.startBattle(['top', 'mid', 'bot']);
+}
+function setMode(m) {
+  mode = m;
+  document.body.dataset.mode = m;
+  for (const b of document.querySelectorAll('#modeTabs button')) b.classList.toggle('on', b.dataset.mode === m);
+  try { localStorage.setItem('dota-archaeology-mode', m); } catch { /* storage may be blocked */ }
+  for (const v of views) applyModeTo(v);
+  if (!$('#helpOverlay').hidden) renderHelp();
+}
+for (const b of document.querySelectorAll('#modeTabs button')) b.onclick = () => setMode(b.dataset.mode);
+$('#worldLoc').onchange = () => setMode('world');
+$('#battleLanes').onchange = () => setMode('battle');
+$('#battleRestart').onclick = () => setMode('battle');
+
+// settings menu: opens under its button, closes on any click outside
+$('#btnSettings').onclick = (e) => { e.stopPropagation(); $('#settingsPop').hidden = !$('#settingsPop').hidden; };
+addEventListener('pointerdown', (e) => { if (!$('#settingsPop').hidden && !e.target.closest('#settingsPop, #btnSettings')) $('#settingsPop').hidden = true; });
+
+// controls overlay (H or ?), written for the current mode
+const HELP = {
+  common: [['<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd>', 'Studio · World · Map · Battle'], ['<kbd>L</kbd> or ☰', 'show / hide the model list'],
+    ['<kbd>Space</kbd>', 'pause / play'], ['<kbd>H</kbd> or <kbd>?</kbd>', 'this overlay'], ['◀ ▶ in a view', 'step to the previous / next build']],
+  studio: [['Left-drag', 'rotate around the model'], ['Middle-drag or right-drag', 'pan'], ['Wheel', 'zoom'],
+    ['<kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> or HUD click', 'play the ability\'s cast animation'],
+    ['Timeline ticks', 'blue = sound, orange = effect; click to preview']],
+  world: [['Middle-drag', 'grab and move the terrain'], ['Left-drag', 'rotate the camera'], ['Wheel', 'zoom toward the cursor'],
+    ['Arrow keys / screen edge', 'pan'], ['<kbd>F1</kbd>', 'centre on your hero']],
+  map: [['Middle-drag', 'grab and move the terrain'], ['Left-drag', 'rotate'], ['Wheel', 'zoom toward the cursor'],
+    ['Arrow keys / screen edge', 'fly across the map'], ['Click the minimap', 'fly there'], ['Double-click the ground', 'your hero runs there'],
+    ['Click a landmark', 'zoom to it'], ['<kbd>F1</kbd>', 'centre on your hero'], ['⚔ waves (map bar)', 'creep waves on all lanes']],
+  battle: [['Right-click ground', 'move'], ['Right-click an enemy', 'attack'], ['Right-click your creep below 50 %', 'deny'],
+    ['<kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd>', 'abilities — then left-click a target or the ground'],
+    ['<kbd>S</kbd>', 'stop'], ['<kbd>Esc</kbd> / right-click', 'cancel targeting'], ['Middle-drag', 'move the camera'], ['<kbd>F1</kbd>', 'centre on your hero']],
 };
+function renderHelp() {
+  const rows = (list) => `<table>${list.map(([k, d]) => `<tr><td>${k}</td><td>${d}</td></tr>`).join('')}</table>`;
+  const name = { studio: 'Studio', world: 'World', map: 'Map', battle: 'Battle' }[mode];
+  $('#helpOverlay .help-card').innerHTML = `<button class="btn icon close" title="Close (Esc)">✕</button><h2>Controls — ${name}</h2>`
+    + rows(HELP[mode]) + `<h3>Everywhere</h3>` + rows(HELP.common);
+  $('#helpOverlay .close').onclick = () => ($('#helpOverlay').hidden = true);
+}
+const toggleHelp = () => { renderHelp(); $('#helpOverlay').hidden = !$('#helpOverlay').hidden; };
+
+// model list: hide it for more room (remembered); the views resize when the column has moved
+function setSidebar(show) {
+  document.body.classList.toggle('no-sidebar', !show);
+  setPref('sidebar-hidden', !show);
+  setTimeout(() => views.forEach((v) => v.resize()), 220);
+}
+$('#btnSidebar').onclick = () => setSidebar(document.body.classList.contains('no-sidebar'));
+setSidebar(!pref('sidebar-hidden', false));
+
+// first visit: point at the tabs, the model list toggle and the help button once
+// they disappear on the first click or key press anywhere (not only "Got it")
+const dismissCoach = () => { if ($('#coach').hidden) return; $('#coach').hidden = true; setPref('coached', true); };
+if (!pref('coached', false)) {
+  $('#coach').hidden = false;
+  addEventListener('pointerdown', dismissCoach, { capture: true, once: true });
+  addEventListener('keydown', dismissCoach, { capture: true, once: true });
+}
+$('#coachOk').onclick = dismissCoach;
+$('#btnHelp').onclick = toggleHelp;
+$('#helpOverlay').onclick = (e) => { if (e.target.id === 'helpOverlay') $('#helpOverlay').hidden = true; };
+addEventListener('keydown', (e) => {
+  if (/input|select|textarea/i.test(e.target.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
+  const tab = { Digit1: 'studio', Digit2: 'world', Digit3: 'map', Digit4: 'battle' }[e.code];
+  if (tab) { e.preventDefault(); if (tab !== mode) setMode(tab); return; }
+  if (e.code === 'KeyL') { e.preventDefault(); setSidebar(document.body.classList.contains('no-sidebar')); return; }
+  if (e.code === 'KeyH' || e.key === '?') { e.preventDefault(); toggleHelp(); }
+  else if (e.code === 'Escape' && !$('#helpOverlay').hidden) $('#helpOverlay').hidden = true;
+  else if (e.code === 'F1') { e.preventDefault(); (hud.view || views[0])?.centerOnHero(); }
+});
 $('#optTints').onchange = () => setTerrainTints($('#optTints').checked);
 $('#optTod').onchange = () => views.forEach((v) => { if (v.world) { v.applyLighting(); v.startAmbience(); } });
 
@@ -2502,7 +2791,9 @@ $('#optVol').oninput = () => { audio.volume = +$('#optVol').value; if (audio.mas
 addEventListener('resize', () => views.forEach((v) => v.resize()));
 
 await hud.mount();
+document.body.dataset.mode = 'studio';
 layout();
+try { const saved = localStorage.getItem('dota-archaeology-mode'); if (saved && saved !== 'studio' && HELP[saved]) setMode(saved); } catch { /* storage may be blocked */ }
 window.dotaViewer = { views, hud, audio }; // handle for debugging from the browser console
 await refreshList();
 // load the other builds' lists in the background so "only here" tags can appear

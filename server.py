@@ -112,8 +112,8 @@ def discover_builds():
                 with open(info_path) as f:
                     info = json.load(f)
                 date = info['published'][:10]
-                note = (f"content v{info['content']['version']} · client v{info['client']['version']}"
-                        f" · engine v{info['engine']['version']}")
+                note = info.get('note') or (f"content v{info['content']['version']} · client v{info['client']['version']}"
+                                            f" · engine v{info['engine']['version']}")
             except (OSError, ValueError, KeyError):
                 note = None
         if note is None:

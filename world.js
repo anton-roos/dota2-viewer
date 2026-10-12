@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { parseBSP, applyMultiblend, parseVMT, parseVTF, texturePath, buildModel, materialPaths, decodeSequence } from './source.js?v=9';
 
 const worlds = new Map(); // build -> Promise<world>, in least-recently-used order
+const CELL = 3000; // size of the map cells props are grouped into for frustum culling (Source units)
 
 export function loadWorld(build, tryFile, onProgress = () => {}) {
   if (!worlds.has(build)) worlds.set(build, buildWorld(build, tryFile, onProgress));
@@ -419,7 +420,14 @@ async function buildWorld(build, tryFile, onProgress) {
           }
           return new THREE.MeshLambertMaterial({ color: 0x8a8a80 });
         }));
-        const matrices = placements.get(path);
+        // instances are split into map cells so the renderer can skip what's off-screen (one mesh spanning
+        // the whole map can never be frustum-culled: every tree would be drawn every frame)
+        const cells = new Map();
+        for (const mx of placements.get(path)) {
+          const key = `${Math.floor(mx.elements[12] / CELL)},${Math.floor(mx.elements[13] / CELL)}`;
+          if (!cells.has(key)) cells.set(key, []);
+          cells.get(key).push(mx);
+        }
         meshes.forEach((m, i) => {
           if (!mats[i]) return;
           const geo = new THREE.BufferGeometry();
@@ -427,11 +435,24 @@ async function buildWorld(build, tryFile, onProgress) {
           geo.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2));
           geo.setIndex(new THREE.BufferAttribute(m.idx, 1));
           geo.computeVertexNormals();
-          const inst = new THREE.InstancedMesh(geo, mats[i], matrices.length);
-          matrices.forEach((mx, k) => inst.setMatrixAt(k, mx));
-          inst.name = path;
-          inst.computeBoundingSphere();
-          props.add(inst);
+          geo.computeBoundingSphere();
+          // small decorations (grass, flowers, mushrooms) are hidden from far away — see View.updateDetail()
+          const detail = geo.boundingSphere.radius < 120;
+          // two versions share the geometry: per-cell meshes for close views (culled) and one whole-map mesh for
+          // the overview (few draw calls); View.updateDetail() shows one or the other
+          const add = (matrices, whole) => {
+            const inst = new THREE.InstancedMesh(geo, mats[i], matrices.length);
+            matrices.forEach((mx, k) => inst.setMatrixAt(k, mx));
+            inst.name = path;
+            inst.userData.detail = detail;
+            inst.userData.lod = whole ? 'whole' : 'cell';
+            inst.visible = !whole;
+            inst.computeBoundingSphere();
+            props.add(inst);
+          };
+          for (const matrices of cells.values()) add(matrices, false);
+          if (cells.size > 1) add(placements.get(path), true);
+          else props.children[props.children.length - 1].userData.lod = 'both';
         });
       } catch { failed++; }
       done++;

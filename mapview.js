@@ -59,7 +59,7 @@ export class MapMode {
       + `<button class="btn" data-a="overview" title="Back to the whole map">⤢ overview</button>`
       + `<button class="btn" data-a="hero" title="Fly to the hero">◎ hero</button>`
       + `<button class="btn" data-a="battle" title="Creep waves on all three lanes, fighting each other and the towers (click again to stop)">⚔ waves</button>`
-      + `<div class="mhelp">drag: pan · right-drag: rotate · wheel: zoom · arrows: fly · double-click ground: hero runs there</div></div>`;
+      + `</div>`;
     v.el.append(this.el);
     this.labelsEl = this.el.querySelector('.maplabels');
     this.mm = this.el.querySelector('.minimap canvas');
@@ -118,8 +118,6 @@ export class MapMode {
     const c = this.view.controls, cam = this.view.camera;
     this.saved = { buttons: { ...c.mouseButtons }, ssp: c.screenSpacePanning, maxPolar: c.maxPolarAngle, maxDist: c.maxDistance,
       minDist: c.minDistance, near: cam.near, far: cam.far, pan: c.panSpeed };
-    c.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
-    c.screenSpacePanning = false; // pan along the ground, like an RTS camera
     c.maxPolarAngle = THREE.MathUtils.degToRad(82);
     c.minDistance = 250;
     c.maxDistance = 32000;
@@ -354,8 +352,6 @@ export class MapMode {
     this.el.remove();
     v.scene.remove(this.group);
     for (const l of this.group.children) { l.geometry.dispose(); l.material.dispose(); }
-    c.mouseButtons = this.saved.buttons;
-    c.screenSpacePanning = this.saved.ssp;
     c.maxPolarAngle = this.saved.maxPolar;
     c.maxDistance = this.saved.maxDist;
     c.minDistance = this.saved.minDist;

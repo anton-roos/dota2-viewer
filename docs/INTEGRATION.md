@@ -145,3 +145,27 @@ Fiery Soul), `onKill` / `onDeath` (Necromastery), `onTick` (Presence aura). `her
 
 ### Glow cards fade edge-on — `world.js angleFade()`
 GlobalLitSimple materials with `$ALPHA_ANGLE_POWER` get `alpha *= |N·V|^power` via onBeforeCompile.
+
+### UI: mode tabs, context strip, Dota-style camera (index.html)
+- Top bar: mode tabs **Studio / World / Map / Battle** (`setMode()` → `applyModeTo(view)` → `View.setWorld()`), then
+  global controls (play/speed, views/sync, sound/volume, Audio drawer, ⚙ settings, ? help). The last tab is
+  remembered in localStorage.
+- Context strip (`.ctxbar`): every control carries `data-show="studio world map battle"`; CSS shows the ones for
+  `body[data-mode]`. All original control ids are unchanged, so existing handlers keep working. The per-view
+  location menus are hidden; World's location menu (`#worldLoc`) and Battle's lane choice (`#battleLanes`) drive all views.
+- `View.applyControls()` (run every frame, applies only on change): left-drag rotate, middle-drag pan (along the
+  ground in world modes, `zoomToCursor` there), right-drag pan except while the hero fights (orders).
+  `View.panCamera()` pans with arrow keys and the screen edge (0.15 s dwell; setting "screen-edge panning").
+  `View.centerOnHero()` on F1. MapMode no longer sets mouse buttons.
+- Folded panels are remembered: stats panel (click its header), model details (one-line summary, click to open).
+- `H` / `?` opens a controls overlay written for the current tab (`HELP` table).
+- Model list toggle (☰ / `L`, `setSidebar()`, remembered), tab keys `1`–`4`, and first-visit hints (`#coach`, shown
+  until "Got it" or Esc; preference `da-coached`).
+
+### Rendering performance (world.js + View.updateDetail)
+Each prop model is built twice from shared geometry: per-cell InstancedMeshes (`CELL` = 3000 units,
+`userData.lod = 'cell'`) so off-screen parts are frustum-culled, and one whole-map mesh (`'whole'`) for the
+overview, where per-cell meshes would only add draw calls. `View.updateDetail()` picks one by camera distance
+(> 5000 = far) and hides small decorations (`userData.detail`, bounding radius < 120) when far.
+Measured per view on a GTX 1060 (GPU time, forced with a 1-px readPixels): overview 9–12 ms → 5 ms,
+battle / world ~9 ms → 3–4 ms, map zoomed in → 2.5 ms.
